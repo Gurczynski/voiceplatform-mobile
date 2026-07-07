@@ -1,4 +1,4 @@
-// Conversation Detail Screen - Real SMS via Edge Function + Realtime
+// Conversation Detail - Real messages from Supabase with realtime
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, TextInput,
@@ -28,29 +28,31 @@ export default function ConversationScreen() {
   const loadConversation = useCallback(async () => {
     if (!id) return;
 
-    const { data: conv } = await supabase
-      .from('conversations')
-      .select('*, contacts(*), phone_numbers(*)')
-      .eq('id', id)
-      .single();
-
-    if (conv) setConversation(conv as Conversation);
-
-    const { data: msgs } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', id)
-      .order('created_at', { ascending: true });
-
-    setMessages((msgs || []) as Message[]);
-    setLoading(false);
-
-    // Mark as read
-    if (conv?.unread_count > 0) {
-      await supabase
+    try {
+      const { data: conv } = await supabase
         .from('conversations')
-        .update({ unread_count: 0 })
-        .eq('id', id);
+        .select('*, contacts(*), phone_numbers(*)')
+        .eq('id', id)
+        .single();
+
+      if (conv) setConversation(conv as Conversation);
+
+      const { data: msgs } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', id)
+        .order('created_at', { ascending: true });
+
+      setMessages((msgs || []) as Message[]);
+
+      // Mark as read
+      if (conv?.unread_count > 0) {
+        await supabase.from('conversations').update({ unread_count: 0 }).eq('id', id);
+      }
+    } catch (e) {
+      console.error('Error loading conversation:', e);
+    } finally {
+      setLoading(false);
     }
   }, [id]);
 
@@ -66,12 +68,7 @@ export default function ConversationScreen() {
       .channel(`messages:${id}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${id}`,
-        },
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${id}` },
         (payload) => {
           const newMsg = payload.new as Message;
           setMessages(prev => [...prev, newMsg]);
@@ -79,9 +76,7 @@ export default function ConversationScreen() {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [id]);
 
   const handleSend = async () => {
@@ -91,7 +86,6 @@ export default function ConversationScreen() {
     const messageBody = newMessage.trim();
     setNewMessage('');
 
-    // Use Edge Function to send (never direct Twilio)
     const { error } = await sendMessage(
       currentOrganization.id,
       conversation.phone_number_id,
@@ -100,7 +94,6 @@ export default function ConversationScreen() {
     );
 
     if (error) {
-      // Show error to user
       console.error('Send failed:', error);
     }
 
@@ -124,8 +117,7 @@ export default function ConversationScreen() {
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isMe = item.direction === 'outbound';
-    const showDate = index === 0 ||
-      formatDate(item.created_at) !== formatDate(messages[index - 1]?.created_at);
+    const showDate = index === 0 || formatDate(item.created_at) !== formatDate(messages[index - 1]?.created_at);
 
     return (
       <>
@@ -191,7 +183,7 @@ export default function ConversationScreen() {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
+            keyExtractor={item => item.id}
             contentContainerStyle={styles.messageList}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           />

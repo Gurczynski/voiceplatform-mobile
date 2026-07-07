@@ -1,7 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../../theme/ThemeProvider';
 import { useRouter } from 'expo-router';
+import { ThemedText } from './ThemedText';
+import { Icon, icons } from './Icon';
 
 interface ThemedHeaderProps {
   title: string;
@@ -19,8 +22,9 @@ export function ThemedHeader({
   transparent = false,
 }: ThemedHeaderProps) {
   const { theme, isDark } = useThemeContext();
-  const { colors, spacing, fontSize } = theme;
+  const { colors, fontSize } = theme;
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   return (
     <View
@@ -29,7 +33,7 @@ export function ThemedHeader({
         {
           backgroundColor: transparent ? 'transparent' : colors.headerBg,
           borderBottomColor: transparent ? 'transparent' : colors.headerBorder,
-          paddingTop: Platform.OS === 'ios' ? 60 : StatusBar.currentHeight || 0 + 16,
+          paddingTop: insets.top + 8,
         },
       ]}
     >
@@ -38,17 +42,17 @@ export function ThemedHeader({
         <View style={styles.left}>
           {showBack && (
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Text style={[styles.backIcon, { color: colors.primary }]}>‹</Text>
+              <Icon name={icons.back} size={24} color={colors.primary} />
             </TouchableOpacity>
           )}
-          <View>
-            <Text style={[styles.title, { color: colors.text, fontSize: fontSize.xxl }]} numberOfLines={1}>
+          <View style={styles.titleContainer}>
+            <ThemedText variant="subtitle" numberOfLines={1}>
               {title}
-            </Text>
+            </ThemedText>
             {subtitle && (
-              <Text style={[styles.subtitle, { color: colors.textSecondary, fontSize: fontSize.sm }]}>
+              <ThemedText variant="caption" numberOfLines={1}>
                 {subtitle}
-              </Text>
+              </ThemedText>
             )}
           </View>
         </View>
@@ -61,13 +65,14 @@ export function ThemedHeader({
 const styles = StyleSheet.create({
   container: {
     borderBottomWidth: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 12,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 44,
   },
   left: {
     flexDirection: 'row',
@@ -75,23 +80,18 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 8,
   },
+  titleContainer: {
+    flex: 1,
+    gap: 2,
+  },
   right: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginLeft: 8,
   },
   backButton: {
+    padding: 4,
     marginRight: 4,
-  },
-  backIcon: {
-    fontSize: 32,
-    fontWeight: '300',
-    marginTop: -4,
-  },
-  title: {
-    fontWeight: '700',
-  },
-  subtitle: {
-    marginTop: 1,
   },
 });

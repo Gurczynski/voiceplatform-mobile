@@ -1,3 +1,4 @@
+// Home Dashboard - Loads all real data from Supabase
 import { useEffect, useState, useCallback } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -7,9 +8,9 @@ import { ThemedView, ThemedText, ThemedCard, StatCard, ThemedHeader, Icon, icons
 
 export default function HomeScreen() {
   const { theme } = useThemeContext();
-  const { colors, spacing, fontSize, borderRadius } = theme;
+  const { colors } = theme;
   const router = useRouter();
-  const { user, profile, currentOrganization, membership, signOut, loadSession } = useAuthStore();
+  const { user, profile, currentOrganization, membership, signOut, loadSession, isLoading } = useAuthStore();
   const {
     phoneNumbers, conversations, calls, voicemails,
     loadPhoneNumbers, loadConversations, loadCalls, loadVoicemails,
@@ -22,13 +23,12 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (currentOrganization) {
+    if (currentOrganization?.id) {
       loadPhoneNumbers(currentOrganization.id);
       loadConversations(currentOrganization.id);
       loadCalls(currentOrganization.id);
       loadVoicemails(currentOrganization.id);
 
-      // Subscribe to realtime updates
       const unsubMessages = subscribeToMessages(currentOrganization.id);
       const unsubCalls = subscribeToCalls(currentOrganization.id);
 
@@ -37,12 +37,12 @@ export default function HomeScreen() {
         unsubCalls();
       };
     }
-  }, [currentOrganization]);
+  }, [currentOrganization?.id]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadSession();
-    if (currentOrganization) {
+    if (currentOrganization?.id) {
       await Promise.all([
         loadPhoneNumbers(currentOrganization.id),
         loadConversations(currentOrganization.id),
@@ -51,16 +51,25 @@ export default function HomeScreen() {
       ]);
     }
     setRefreshing(false);
-  }, [currentOrganization]);
+  }, [currentOrganization?.id]);
 
   const handleSignOut = async () => {
     await signOut();
     router.replace('/');
   };
 
-  const openConversations = conversations.filter((c) => c.status === 'open').length;
-  const newVoicemails = voicemails.filter((v) => v.status === 'new').length;
+  const openConversations = conversations.filter(c => c.status === 'open').length;
+  const newVoicemails = voicemails.filter(v => v.status === 'new').length;
   const recentCalls = calls.slice(0, 5);
+
+  if (isLoading) {
+    return (
+      <ThemedView variant="default" style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Icon name={icons.call} size={48} color={colors.primary} />
+        <ThemedText variant="subtitle" style={{ marginTop: 16 }}>Loading...</ThemedText>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView variant="default" style={styles.container}>
@@ -81,6 +90,7 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
+        {/* Greeting */}
         <View style={styles.greetingSection}>
           <ThemedText variant="title">
             Hello, {profile?.full_name || user?.email?.split('@')[0] || 'User'}
@@ -92,6 +102,7 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Stats */}
         <View style={styles.statsGrid}>
           <StatCard value={phoneNumbers.length} label="Numbers" />
           <StatCard value={openConversations} label="Open Chats" />
@@ -99,6 +110,7 @@ export default function HomeScreen() {
           <StatCard value={calls.length} label="Calls" />
         </View>
 
+        {/* Quick Actions */}
         <ThemedText variant="subtitle" style={styles.sectionTitle}>Quick Actions</ThemedText>
         <View style={styles.actionsGrid}>
           <ThemedCard variant="elevated" padding="md" onPress={() => router.push('/dialpad')} style={styles.actionCard}>
@@ -113,12 +125,13 @@ export default function HomeScreen() {
             <Icon name={icons.chat} size={28} color={colors.primary} />
             <ThemedText variant="body" weight="600" align="center">Messages</ThemedText>
           </ThemedCard>
-          <ThemedCard variant="elevated" padding="md" onPress={() => router.push('/(tabs)/contacts')} style={styles.actionCard}>
-            <Icon name={icons.people} size={28} color={colors.primary} />
-            <ThemedText variant="body" weight="600" align="center">Contacts</ThemedText>
+          <ThemedCard variant="elevated" padding="md" onPress={() => router.push('/(tabs)/voicemail')} style={styles.actionCard}>
+            <Icon name={icons.mail} size={28} color={colors.primary} />
+            <ThemedText variant="body" weight="600" align="center">Voicemail</ThemedText>
           </ThemedCard>
         </View>
 
+        {/* Recent Calls */}
         {recentCalls.length > 0 && (
           <>
             <ThemedText variant="subtitle" style={styles.sectionTitle}>Recent Calls</ThemedText>
@@ -133,7 +146,7 @@ export default function HomeScreen() {
                       {call.contacts?.name || call.from_number || call.to_number}
                     </ThemedText>
                     <ThemedText variant="caption">
-                      {call.direction === 'inbound' ? 'Incoming' : 'Outgoing'} • {call.status}
+                      {call.direction === 'inbound' ? 'Incoming' : 'Outgoing'} • {call.status} • {call.duration_seconds}s
                     </ThemedText>
                   </View>
                   <ThemedText variant="caption">
@@ -145,6 +158,7 @@ export default function HomeScreen() {
           </>
         )}
 
+        {/* Phone Numbers */}
         {phoneNumbers.length > 0 && (
           <>
             <ThemedText variant="subtitle" style={styles.sectionTitle}>Your Numbers</ThemedText>
@@ -154,7 +168,7 @@ export default function HomeScreen() {
                   <Icon name={icons.phonePortrait} size={20} color={colors.primary} />
                   <View>
                     <ThemedText variant="body" weight="600">{num.formatted_number}</ThemedText>
-                    <ThemedText variant="caption">{num.friendly_name || num.type}</ThemedText>
+                    <ThemedText variant="caption">{num.friendly_name || num.type} • {num.status}</ThemedText>
                   </View>
                 </View>
               </ThemedCard>

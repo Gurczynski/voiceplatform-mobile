@@ -1,6 +1,8 @@
+// AI Voice - Real AI conversations via Edge Function
 import { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../src/theme/ThemeProvider';
 import { useAuthStore } from '../src/stores';
 import { supabase, callEdgeFunction } from '../src/lib/supabase';
@@ -17,14 +19,12 @@ export default function AIVoiceScreen() {
   const { theme } = useThemeContext();
   const { colors, borderRadius } = theme;
   const { currentOrganization } = useAuthStore();
-  const params = useLocalSearchParams<{ phoneNumberId?: string }>();
+  const insets = useSafeAreaInsets();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [aiAgentName, setAiAgentName] = useState('AI Assistant');
   const [loading, setLoading] = useState(false);
+  const [aiAgentName, setAiAgentName] = useState('AI Assistant');
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -33,14 +33,24 @@ export default function AIVoiceScreen() {
   }, []);
 
   const loadAIAgent = async () => {
-    if (!currentOrganization) return;
+    if (!currentOrganization?.id) return;
     const { data: agent } = await supabase
       .from('ai_agents')
-      .select('name')
+      .select('name, greeting')
       .eq('organization_id', currentOrganization.id)
       .eq('is_active', true)
       .single();
-    if (agent) setAiAgentName(agent.name);
+    if (agent) {
+      setAiAgentName(agent.name);
+      if (agent.greeting) {
+        setMessages([{
+          id: '1',
+          role: 'assistant',
+          content: agent.greeting,
+          timestamp: new Date(),
+        }]);
+      }
+    }
   };
 
   const addAIMessage = (content: string) => {
@@ -53,12 +63,11 @@ export default function AIVoiceScreen() {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || !currentOrganization) return;
+    if (!input.trim() || !currentOrganization?.id) return;
 
     const userMessage = input.trim();
     setInput('');
 
-    // Add user message
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
       role: 'user',
@@ -68,35 +77,29 @@ export default function AIVoiceScreen() {
 
     setLoading(true);
 
-    // Call AI edge function
-    const { data, error } = await callEdgeFunction('ai-voice-conversation', {
-      organizationId: currentOrganization.id,
-      message: userMessage,
-      history: messages.map(m => ({ role: m.role, content: m.content })),
-    });
+    try {
+      const { data, error } = await callEdgeFunction('ai-voice-conversation', {
+        organizationId: currentOrganization.id,
+        message: userMessage,
+        history: messages.map(m => ({ role: m.role, content: m.content })),
+      });
+
+      if (error) {
+        addAIMessage('Sorry, I encountered an error. Please try again.');
+      } else if (data?.response) {
+        addAIMessage(data.response);
+      } else {
+        addAIMessage('I\'m here to help. Could you tell me more about what you need?');
+      }
+    } catch (e) {
+      addAIMessage('Sorry, I\'m having trouble connecting. Please try again.');
+    }
 
     setLoading(false);
 
-    if (error) {
-      addAIMessage('Sorry, I encountered an error. Please try again.');
-    } else if (data?.response) {
-      addAIMessage(data.response);
-    }
-
-    // Scroll to bottom
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
-  };
-
-  const toggleListening = () => {
-    if (isListening) {
-      setIsListening(false);
-      // In production, stop speech recognition and process
-    } else {
-      setIsListening(true);
-      // In production, start speech recognition
-    }
   };
 
   const formatTime = (date: Date) => {
@@ -106,7 +109,7 @@ export default function AIVoiceScreen() {
   return (
     <ThemedView variant="default" style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Icon name={icons.back} size={24} color={colors.icon} />
         </TouchableOpacity>
@@ -126,16 +129,13 @@ export default function AIVoiceScreen() {
         contentContainerStyle={styles.messagesContent}
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
-        {messages.map((msg) => (
+        {messages.map(msg => (
           <View
             key={msg.id}
             style={[
               styles.messageBubble,
               msg.role === 'user' ? styles.userBubble : styles.aiBubble,
-              {
-                backgroundColor: msg.role === 'user' ? colors.primary : colors.surfaceAlt,
-                borderRadius: borderRadius.lg,
-              },
+              { backgroundColor: msg.role === 'user' ? colors.primary : colors.surfaceAlt, borderRadius: borderRadius.lg },
             ]}
           >
             {msg.role === 'assistant' && (
@@ -146,20 +146,10 @@ export default function AIVoiceScreen() {
                 </ThemedText>
               </View>
             )}
-            <ThemedText
-              variant="body"
-              style={{ color: msg.role === 'user' ? '#FFFFFF' : colors.text }}
-            >
+            <ThemedText variant="body" style={{ color: msg.role === 'user' ? '#FFFFFF' : colors.text }}>
               {msg.content}
             </ThemedText>
-            <ThemedText
-              variant="caption"
-              style={{
-                color: msg.role === 'user' ? '#FFFFFF80' : colors.textMuted,
-                alignSelf: 'flex-end',
-                marginTop: 4,
-              }}
-            >
+            <ThemedText variant="caption" style={{ color: msg.role === 'user' ? '#FFFFFF80' : colors.textMuted, alignSelf: 'flex-end', marginTop: 4 }}>
               {formatTime(msg.timestamp)}
             </ThemedText>
           </View>
@@ -176,34 +166,8 @@ export default function AIVoiceScreen() {
         )}
       </ScrollView>
 
-      {/* Voice Controls */}
-      <View style={[styles.voiceControls, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-        <TouchableOpacity
-          style={[
-            styles.voiceButton,
-            {
-              backgroundColor: isListening ? colors.error : colors.primary,
-              borderRadius: borderRadius.full,
-            },
-          ]}
-          onPress={toggleListening}
-        >
-          <Icon
-            name={isListening ? icons.micOff : icons.mic}
-            size={32}
-            color="#FFFFFF"
-          />
-        </TouchableOpacity>
-        <ThemedText variant="caption" style={{ color: colors.textMuted }}>
-          {isListening ? 'Tap to stop' : 'Tap to speak'}
-        </ThemedText>
-      </View>
-
       {/* Text Input */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
         <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           <TextInput
             style={[styles.textInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
@@ -229,14 +193,7 @@ export default function AIVoiceScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    gap: 12,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, gap: 12 },
   backButton: { padding: 4 },
   headerInfo: { flex: 1, gap: 2 },
   aiBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
@@ -248,44 +205,7 @@ const styles = StyleSheet.create({
   aiMessageHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
   typingIndicator: { flexDirection: 'row', gap: 6, padding: 8 },
   typingDot: { width: 8, height: 8, borderRadius: 4 },
-  voiceControls: {
-    alignItems: 'center',
-    padding: 20,
-    borderTopWidth: 1,
-    gap: 8,
-  },
-  voiceButton: {
-    width: 80,
-    height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 12,
-    borderTopWidth: 1,
-    gap: 8,
-  },
-  textInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 16,
-    maxHeight: 100,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  inputContainer: { flexDirection: 'row', alignItems: 'flex-end', padding: 12, borderTopWidth: 1, gap: 8 },
+  textInput: { flex: 1, borderWidth: 1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, maxHeight: 100 },
+  sendButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 });

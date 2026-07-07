@@ -1,56 +1,40 @@
+// Voicemail Tab - Real voicemails from Supabase
 import { useEffect, useState, useCallback } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../src/stores';
+import { useAuthStore, useAppStore } from '../../src/stores';
 import { supabase } from '../../src/lib/supabase';
 import { ThemedView, ThemedText, ThemedCard, ThemedHeader, Icon, icons } from '../../src/components/ui';
-import type { VoicemailMessage } from '../../src/types';
 
 export default function VoicemailScreen() {
   const { theme } = useThemeContext();
   const { colors, borderRadius } = theme;
   const { currentOrganization } = useAuthStore();
-  const [voicemails, setVoicemails] = useState<VoicemailMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { voicemails, loadVoicemails } = useAppStore();
   const [refreshing, setRefreshing] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
-  const loadVoicemails = useCallback(async () => {
-    if (!currentOrganization) return;
-    const { data } = await supabase
-      .from('voicemail_messages')
-      .select('*, contacts(*)')
-      .eq('organization_id', currentOrganization.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    setVoicemails((data || []) as VoicemailMessage[]);
-    setLoading(false);
-  }, [currentOrganization]);
-
   useEffect(() => {
-    loadVoicemails();
-  }, [loadVoicemails]);
+    if (currentOrganization?.id) {
+      loadVoicemails(currentOrganization.id);
+    }
+  }, [currentOrganization?.id]);
 
   const onRefresh = useCallback(async () => {
+    if (!currentOrganization?.id) return;
     setRefreshing(true);
-    await loadVoicemails();
+    await loadVoicemails(currentOrganization.id);
     setRefreshing(false);
-  }, [loadVoicemails]);
+  }, [currentOrganization?.id]);
 
   const markAsListened = async (id: string) => {
-    await supabase
-      .from('voicemail_messages')
-      .update({ status: 'listened' })
-      .eq('id', id);
-    setVoicemails(prev => prev.map(v => v.id === id ? { ...v, status: 'listened' } : v));
+    await supabase.from('voicemail_messages').update({ status: 'listened' }).eq('id', id);
+    if (currentOrganization?.id) loadVoicemails(currentOrganization.id);
   };
 
   const markAsResolved = async (id: string) => {
-    await supabase
-      .from('voicemail_messages')
-      .update({ status: 'resolved' })
-      .eq('id', id);
-    setVoicemails(prev => prev.map(v => v.id === id ? { ...v, status: 'resolved' } : v));
+    await supabase.from('voicemail_messages').update({ status: 'resolved' }).eq('id', id);
+    if (currentOrganization?.id) loadVoicemails(currentOrganization.id);
   };
 
   const formatDuration = (seconds: number) => {
@@ -74,12 +58,6 @@ export default function VoicemailScreen() {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
-  const getPriorityColor = (priority: string, isUrgent: boolean) => {
-    if (isUrgent) return colors.error;
-    if (priority === 'high') return colors.warning;
-    return colors.textMuted;
-  };
-
   const newCount = voicemails.filter(v => v.status === 'new').length;
 
   return (
@@ -96,18 +74,14 @@ export default function VoicemailScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {loading ? (
-          <View style={styles.emptyState}>
-            <ThemedText variant="muted">Loading voicemails...</ThemedText>
-          </View>
-        ) : voicemails.length === 0 ? (
+        {voicemails.length === 0 ? (
           <View style={styles.emptyState}>
             <Icon name={icons.mic} size={48} color={colors.textMuted} />
             <ThemedText variant="subtitle" align="center">No voicemails</ThemedText>
             <ThemedText variant="muted" align="center">Voicemail messages will appear here</ThemedText>
           </View>
         ) : (
-          voicemails.map((vm) => (
+          voicemails.map(vm => (
             <ThemedCard
               key={vm.id}
               variant="outlined"
@@ -123,7 +97,7 @@ export default function VoicemailScreen() {
                     <Icon
                       name={vm.is_urgent ? icons.alert : icons.mic}
                       size={20}
-                      color={getPriorityColor(vm.ai_priority, vm.is_urgent)}
+                      color={vm.is_urgent ? colors.error : colors.primary}
                     />
                   </View>
                   <View style={styles.voicemailInfo}>
@@ -137,13 +111,13 @@ export default function VoicemailScreen() {
                 </View>
                 <View style={styles.voicemailActions}>
                   {vm.status === 'new' && (
-                    <View style={[styles.newBadge, { backgroundColor: colors.primary }]}>
-                      <Text style={styles.newBadgeText}>NEW</Text>
+                    <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                      <Text style={styles.badgeText}>NEW</Text>
                     </View>
                   )}
                   {vm.is_urgent && (
-                    <View style={[styles.urgentBadge, { backgroundColor: colors.error }]}>
-                      <Text style={styles.urgentBadgeText}>URGENT</Text>
+                    <View style={[styles.badge, { backgroundColor: colors.error }]}>
+                      <Text style={styles.badgeText}>URGENT</Text>
                     </View>
                   )}
                 </View>
@@ -170,11 +144,7 @@ export default function VoicemailScreen() {
                     if (vm.status === 'new') markAsListened(vm.id);
                   }}
                 >
-                  <Icon
-                    name={playingId === vm.id ? icons.pause : icons.play}
-                    size={18}
-                    color={colors.primary}
-                  />
+                  <Icon name={playingId === vm.id ? icons.pause : icons.play} size={18} color={colors.primary} />
                   <ThemedText variant="caption" style={{ color: colors.primary }}>
                     {playingId === vm.id ? 'Pause' : 'Play'}
                   </ThemedText>
@@ -188,16 +158,12 @@ export default function VoicemailScreen() {
                   <ThemedText variant="caption" style={{ color: colors.success }}>Resolve</ThemedText>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]}
-                >
+                <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]}>
                   <Icon name={icons.call} size={18} color={colors.icon} />
                   <ThemedText variant="caption">Call Back</ThemedText>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]}
-                >
+                <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.surfaceAlt }]}>
                   <Icon name={icons.chat} size={18} color={colors.icon} />
                   <ThemedText variant="caption">Text</ThemedText>
                 </TouchableOpacity>
@@ -220,10 +186,8 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   voicemailInfo: { gap: 2 },
   voicemailActions: { flexDirection: 'row', gap: 6 },
-  newBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  newBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
-  urgentBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  urgentBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
+  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
   aiSummary: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, padding: 10, borderRadius: 8, marginBottom: 8 },
   transcription: { marginBottom: 12 },
   actions: { flexDirection: 'row', gap: 8 },

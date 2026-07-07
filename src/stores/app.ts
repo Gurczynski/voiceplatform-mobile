@@ -1,24 +1,27 @@
-// App Store - Handles app data with Edge Functions and Realtime
+// App Store - Complete app data with Edge Functions and Realtime
 import { create } from 'zustand';
 import { supabase, callEdgeFunction, subscribeToTable } from '../lib/supabase';
-import type { PhoneNumber, Conversation, Message, Call, VoicemailMessage } from '../types';
+import type { PhoneNumber, Conversation, Message, Call, VoicemailMessage, Contact } from '../types';
 
 interface AppState {
   phoneNumbers: PhoneNumber[];
   conversations: Conversation[];
   calls: Call[];
   voicemails: VoicemailMessage[];
+  contacts: Contact[];
   selectedConversation: Conversation | null;
   activeCall: Call | null;
   isLoadingNumbers: boolean;
   isLoadingConversations: boolean;
   isLoadingCalls: boolean;
+  isLoadingContacts: boolean;
 
   // Data loading
   loadPhoneNumbers: (orgId: string) => Promise<void>;
   loadConversations: (orgId: string) => Promise<void>;
   loadCalls: (orgId: string) => Promise<void>;
   loadVoicemails: (orgId: string) => Promise<void>;
+  loadContacts: (orgId: string) => Promise<void>;
 
   // Edge function operations
   sendMessage: (orgId: string, phoneNumberId: string, to: string, body: string, mediaUrls?: string[]) => Promise<{ error?: string }>;
@@ -41,158 +44,209 @@ export const useAppStore = create<AppState>((set, get) => ({
   conversations: [],
   calls: [],
   voicemails: [],
+  contacts: [],
   selectedConversation: null,
   activeCall: null,
   isLoadingNumbers: false,
   isLoadingConversations: false,
   isLoadingCalls: false,
+  isLoadingContacts: false,
 
   loadPhoneNumbers: async (orgId) => {
     set({ isLoadingNumbers: true });
-    const { data } = await supabase
-      .from('phone_numbers')
-      .select('*')
-      .eq('organization_id', orgId)
-      .in('status', ['purchased', 'assigned'])
-      .order('created_at', { ascending: false });
-    set({ phoneNumbers: data || [], isLoadingNumbers: false });
+    try {
+      const { data, error } = await supabase
+        .from('phone_numbers')
+        .select('*')
+        .eq('organization_id', orgId)
+        .in('status', ['purchased', 'assigned'])
+        .order('created_at', { ascending: false });
+
+      if (error) console.error('Error loading phone numbers:', error);
+      set({ phoneNumbers: data || [], isLoadingNumbers: false });
+    } catch (e) {
+      console.error('Error:', e);
+      set({ isLoadingNumbers: false });
+    }
   },
 
   loadConversations: async (orgId) => {
     set({ isLoadingConversations: true });
-    const { data } = await supabase
-      .from('conversations')
-      .select('*, contacts(*), phone_numbers(*)')
-      .eq('organization_id', orgId)
-      .order('last_message_at', { ascending: false, nullsFirst: false });
-    set({ conversations: (data || []) as Conversation[], isLoadingConversations: false });
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*, contacts(*), phone_numbers(*)')
+        .eq('organization_id', orgId)
+        .order('last_message_at', { ascending: false, nullsFirst: false });
+
+      if (error) console.error('Error loading conversations:', error);
+      set({ conversations: (data || []) as Conversation[], isLoadingConversations: false });
+    } catch (e) {
+      console.error('Error:', e);
+      set({ isLoadingConversations: false });
+    }
   },
 
   loadCalls: async (orgId) => {
     set({ isLoadingCalls: true });
-    const { data } = await supabase
-      .from('calls')
-      .select('*, contacts(*), phone_numbers(*)')
-      .eq('organization_id', orgId)
-      .order('started_at', { ascending: false })
-      .limit(100);
-    set({ calls: (data || []) as Call[], isLoadingCalls: false });
+    try {
+      const { data, error } = await supabase
+        .from('calls')
+        .select('*, contacts(*), phone_numbers(*)')
+        .eq('organization_id', orgId)
+        .order('started_at', { ascending: false })
+        .limit(100);
+
+      if (error) console.error('Error loading calls:', error);
+      set({ calls: (data || []) as Call[], isLoadingCalls: false });
+    } catch (e) {
+      console.error('Error:', e);
+      set({ isLoadingCalls: false });
+    }
   },
 
   loadVoicemails: async (orgId) => {
-    const { data } = await supabase
-      .from('voicemail_messages')
-      .select('*, contacts(*)')
-      .eq('organization_id', orgId)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    set({ voicemails: (data || []) as VoicemailMessage[] });
+    try {
+      const { data, error } = await supabase
+        .from('voicemail_messages')
+        .select('*, contacts(*)')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) console.error('Error loading voicemails:', error);
+      set({ voicemails: (data || []) as VoicemailMessage[] });
+    } catch (e) {
+      console.error('Error:', e);
+    }
   },
 
-  // Send message via Edge Function (never direct Twilio)
+  loadContacts: async (orgId) => {
+    set({ isLoadingContacts: true });
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('name', { ascending: true });
+
+      if (error) console.error('Error loading contacts:', error);
+      set({ contacts: (data || []) as Contact[], isLoadingContacts: false });
+    } catch (e) {
+      console.error('Error:', e);
+      set({ isLoadingContacts: false });
+    }
+  },
+
   sendMessage: async (orgId, phoneNumberId, to, body, mediaUrls) => {
-    const { data, error } = await callEdgeFunction('send-message', {
-      organizationId: orgId,
-      phoneNumberId,
-      to,
-      body,
-      mediaUrls,
-    });
+    try {
+      const { data, error } = await callEdgeFunction('send-message', {
+        organizationId: orgId,
+        phoneNumberId,
+        to,
+        body,
+        mediaUrls,
+      });
 
-    if (error) return { error };
+      if (error) return { error };
 
-    // Optimistically update conversation
-    if (data?.message) {
-      const { conversations } = get();
-      const conv = conversations.find(c => c.id === data.message.conversation_id);
-      if (conv) {
+      if (data?.message) {
+        const { conversations } = get();
         set({
           conversations: conversations.map(c =>
-            c.id === conv.id
+            c.id === data.message.conversation_id
               ? { ...c, last_message_at: data.message.created_at, last_message_preview: body.slice(0, 100) }
               : c
           ),
         });
       }
+
+      return {};
+    } catch (e: any) {
+      return { error: e.message || 'Failed to send message' };
     }
-
-    return {};
   },
 
-  // Search available numbers via Edge Function
   searchNumbers: async (orgId, options) => {
-    const { data, error } = await callEdgeFunction('search-available-numbers', {
-      organizationId: orgId,
-      countryCode: 'US',
-      areaCode: options?.areaCode,
-      type: options?.type,
-      capabilities: { voice: true, sms: true, mms: true },
-    });
+    try {
+      const { data, error } = await callEdgeFunction('search-available-numbers', {
+        organizationId: orgId,
+        countryCode: 'US',
+        areaCode: options?.areaCode,
+        type: options?.type,
+        capabilities: { voice: true, sms: true, mms: true },
+      });
 
-    if (error) return { error };
-    return { data: data?.numbers || [] };
+      if (error) return { error };
+      return { data: data?.numbers || [] };
+    } catch (e: any) {
+      return { error: e.message || 'Search failed' };
+    }
   },
 
-  // Buy number via Edge Function
   buyNumber: async (orgId, phoneNumber, friendlyName) => {
-    const { data, error } = await callEdgeFunction('buy-number', {
-      organizationId: orgId,
-      phoneNumber,
-      friendlyName,
-    });
+    try {
+      const { data, error } = await callEdgeFunction('buy-number', {
+        organizationId: orgId,
+        phoneNumber,
+        friendlyName,
+      });
 
-    if (error) return { error };
-
-    // Reload phone numbers
-    await get().loadPhoneNumbers(orgId);
-    return {};
+      if (error) return { error };
+      await get().loadPhoneNumbers(orgId);
+      return {};
+    } catch (e: any) {
+      return { error: e.message || 'Purchase failed' };
+    }
   },
 
-  // Subscribe to realtime message updates
   subscribeToMessages: (orgId) => {
-    const channel = subscribeToTable('messages', `organization_id=eq.${orgId}`, (payload) => {
-      if (payload.eventType === 'INSERT') {
-        const newMessage = payload.new as Message;
-        const { conversations } = get();
+    const channel = supabase
+      .channel(`messages:${orgId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: undefined },
+        (payload) => {
+          const newMessage = payload.new as Message;
+          const { conversations } = get();
 
-        // Update the conversation
-        set({
-          conversations: conversations.map(c =>
-            c.id === newMessage.conversation_id
-              ? {
-                  ...c,
-                  last_message_at: newMessage.created_at,
-                  last_message_preview: newMessage.body?.slice(0, 100),
-                  unread_count: c.unread_count + (newMessage.direction === 'inbound' ? 1 : 0),
-                }
-              : c
-          ),
-        });
-      }
-    });
+          set({
+            conversations: conversations.map(c =>
+              c.id === newMessage.conversation_id
+                ? {
+                    ...c,
+                    last_message_at: newMessage.created_at,
+                    last_message_preview: newMessage.body?.slice(0, 100),
+                    unread_count: c.unread_count + (newMessage.direction === 'inbound' ? 1 : 0),
+                  }
+                : c
+            ),
+          });
+        }
+      )
+      .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   },
 
-  // Subscribe to realtime call updates
   subscribeToCalls: (orgId) => {
-    const channel = subscribeToTable('calls', `organization_id=eq.${orgId}`, (payload) => {
-      if (payload.eventType === 'INSERT') {
-        const newCall = payload.new as Call;
-        set({ calls: [newCall, ...get().calls] });
-      } else if (payload.eventType === 'UPDATE') {
-        const updatedCall = payload.new as Call;
-        set({
-          calls: get().calls.map(c => c.id === updatedCall.id ? updatedCall : c),
-        });
-      }
-    });
+    const channel = supabase
+      .channel(`calls:${orgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'calls', filter: undefined },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            set({ calls: [payload.new as Call, ...get().calls] });
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as Call;
+            set({ calls: get().calls.map(c => c.id === updated.id ? updated : c) });
+          }
+        }
+      )
+      .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   },
 
   setSelectedConversation: (conv) => set({ selectedConversation: conv }),
@@ -211,8 +265,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateConversation: (id, updates) => {
     const { conversations } = get();
-    set({
-      conversations: conversations.map(c => c.id === id ? { ...c, ...updates } : c),
-    });
+    set({ conversations: conversations.map(c => c.id === id ? { ...c, ...updates } : c) });
   },
 }));

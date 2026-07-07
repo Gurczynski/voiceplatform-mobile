@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Vibration } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
 import { ThemedView, ThemedText, Icon, icons } from '../../src/components/ui';
 
@@ -8,6 +9,7 @@ export default function ActiveCallScreen() {
   const { theme } = useThemeContext();
   const { colors, borderRadius } = theme;
   const params = useLocalSearchParams<{ number?: string; name?: string; direction?: string }>();
+  const insets = useSafeAreaInsets();
 
   const [callStatus, setCallStatus] = useState<'connecting' | 'ringing' | 'active' | 'ended'>('connecting');
   const [duration, setDuration] = useState(0);
@@ -82,7 +84,7 @@ export default function ActiveCallScreen() {
   };
 
   return (
-    <ThemedView variant="default" style={styles.container}>
+    <ThemedView variant="default" style={[styles.container, { paddingTop: insets.top }]}>
       {/* Call Info */}
       <View style={styles.callInfo}>
         <View style={[styles.avatar, { backgroundColor: colors.surfaceAlt }]}>

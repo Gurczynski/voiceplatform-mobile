@@ -1,4 +1,4 @@
-// Auth Store - Handles authentication and organization management
+// Auth Store - Complete authentication and organization management
 import { create } from 'zustand';
 import { supabase, callEdgeFunction } from '../lib/supabase';
 import type { Organization, UserProfile, OrganizationMember } from '../types';
@@ -30,22 +30,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
 
   signIn: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    set({ user: data.user, session: data.session });
-    await get().loadSession();
-    return {};
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      set({ user: data.user, session: data.session });
+      await get().loadSession();
+      return {};
+    } catch (e: any) {
+      return { error: e.message || 'Sign in failed' };
+    }
   },
 
   signUp: async (email, password, fullName) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName } },
-    });
-    if (error) return { error: error.message };
-    set({ user: data.user, session: data.session });
-    return {};
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName } },
+      });
+      if (error) return { error: error.message };
+      set({ user: data.user, session: data.session });
+      await get().loadSession();
+      return {};
+    } catch (e: any) {
+      return { error: e.message || 'Sign up failed' };
+    }
   },
 
   signOut: async () => {
@@ -63,8 +72,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loadSession: async () => {
     set({ isLoading: true });
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
         set({ isLoading: false });
         return;
       }
@@ -78,14 +88,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .eq('id', session.user.id)
         .single();
 
-      // Load organizations
-      const { data: memberships } = await supabase
+      // Load organizations via membership
+      const { data: memberships, error: memberError } = await supabase
         .from('organization_members')
         .select('*, organizations(*)')
         .eq('user_id', session.user.id)
         .eq('is_active', true);
 
-      const orgs = memberships?.map(m => m.organizations).filter(Boolean) || [];
+      if (memberError) {
+        console.error('Error loading memberships:', memberError);
+      }
+
+      const orgs = (memberships || [])
+        .map(m => m.organizations)
+        .filter(Boolean);
+
       const currentOrg = orgs[0] || null;
       const currentMembership = memberships?.[0] || null;
 
@@ -97,19 +114,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch (e) {
+      console.error('Error loading session:', e);
       set({ isLoading: false });
     }
   },
 
   switchOrganization: async (orgId) => {
-    const { organizations } = get();
+    const { organizations, user } = get();
     const org = organizations.find(o => o.id === orgId);
-    if (org) {
+    if (org && user) {
       const { data: membership } = await supabase
         .from('organization_members')
         .select('*')
         .eq('organization_id', orgId)
-        .eq('user_id', get().user?.id)
+        .eq('user_id', user.id)
         .single();
       set({ currentOrganization: org, membership: membership as OrganizationMember });
     }
@@ -134,8 +152,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
 
     if (error) return { error };
-
-    // Reload session to pick up new org
     await get().loadSession();
     return {};
   },

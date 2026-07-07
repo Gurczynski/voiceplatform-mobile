@@ -1,46 +1,36 @@
+// Contacts Tab - Real contacts from Supabase
 import { useEffect, useState, useCallback } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../src/stores';
-import { supabase } from '../../src/lib/supabase';
+import { useAuthStore, useAppStore } from '../../src/stores';
 import { ThemedView, ThemedText, ThemedCard, ThemedHeader, ThemedInput, Icon, icons } from '../../src/components/ui';
-import type { Contact } from '../../src/types';
 
 export default function ContactsScreen() {
   const { theme } = useThemeContext();
-  const { colors, spacing, fontSize, borderRadius } = theme;
+  const { colors } = theme;
   const { currentOrganization } = useAuthStore();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { contacts, loadContacts, isLoadingContacts } = useAppStore();
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
 
-  const loadContacts = useCallback(async () => {
-    if (!currentOrganization) return;
-    const { data } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('organization_id', currentOrganization.id)
-      .order('name', { ascending: true });
-    setContacts(data || []);
-    setLoading(false);
-  }, [currentOrganization]);
-
   useEffect(() => {
-    loadContacts();
-  }, [loadContacts]);
+    if (currentOrganization?.id) {
+      loadContacts(currentOrganization.id);
+    }
+  }, [currentOrganization?.id]);
 
   const onRefresh = useCallback(async () => {
+    if (!currentOrganization?.id) return;
     setRefreshing(true);
-    await loadContacts();
+    await loadContacts(currentOrganization.id);
     setRefreshing(false);
-  }, [loadContacts]);
+  }, [currentOrganization?.id]);
 
-  const filteredContacts = contacts.filter((contact) => {
+  const filteredContacts = contacts.filter(contact => {
     if (!search) return true;
     return (
       contact.name?.toLowerCase().includes(search.toLowerCase()) ||
-      contact.phone_number.includes(search) ||
+      contact.phone_number?.includes(search) ||
       contact.email?.toLowerCase().includes(search.toLowerCase()) ||
       contact.company?.toLowerCase().includes(search.toLowerCase())
     );
@@ -51,7 +41,7 @@ export default function ContactsScreen() {
     if (!acc[firstLetter]) acc[firstLetter] = [];
     acc[firstLetter].push(contact);
     return acc;
-  }, {} as Record<string, Contact[]>);
+  }, {} as Record<string, typeof filteredContacts>);
 
   const sortedLetters = Object.keys(groupedContacts).sort();
 
@@ -81,7 +71,7 @@ export default function ContactsScreen() {
           leftIcon={<Icon name={icons.search} size={18} color={colors.textMuted} />}
         />
 
-        {loading ? (
+        {isLoadingContacts ? (
           <View style={styles.emptyState}>
             <ThemedText variant="muted">Loading contacts...</ThemedText>
           </View>
@@ -94,12 +84,12 @@ export default function ContactsScreen() {
             </ThemedText>
           </View>
         ) : (
-          sortedLetters.map((letter) => (
+          sortedLetters.map(letter => (
             <View key={letter} style={styles.letterGroup}>
               <View style={[styles.letterHeader, { backgroundColor: colors.surfaceAlt }]}>
                 <ThemedText variant="label" style={{ color: colors.primary }}>{letter}</ThemedText>
               </View>
-              {groupedContacts[letter].map((contact) => (
+              {groupedContacts[letter].map(contact => (
                 <ThemedCard key={contact.id} variant="outlined" padding="md" style={styles.contactItem}>
                   <View style={styles.contactRow}>
                     <View style={[styles.contactAvatar, { backgroundColor: colors.surfaceAlt }]}>
@@ -115,7 +105,7 @@ export default function ContactsScreen() {
                       )}
                     </View>
                     <View style={styles.contactActions}>
-                      {contact.is_vip && <Icon name={icons.starFilled} size={16} color={colors.accent} />}
+                      {contact.is_vip && <Icon name={icons.starFilled} size={16} color={colors.warning} />}
                       {contact.is_blocked && <Icon name={icons.alert} size={16} color={colors.error} />}
                     </View>
                   </View>
