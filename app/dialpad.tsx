@@ -29,7 +29,10 @@ export default function DialPadScreen() {
 
   const handleCall = () => {
     if (number.length > 0) {
-      alert(`Calling ${formatPhoneNumber(number)}...`);
+      router.push({
+        pathname: '/call/active',
+        params: { number: `+1${number}`, direction: 'outbound' },
+      });
     }
   };
 

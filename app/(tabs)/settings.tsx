@@ -7,9 +7,11 @@ import { ThemedView, ThemedText, ThemedCard, ThemedHeader, ThemedButton, Icon, i
 
 export default function SettingsScreen() {
   const { theme, themeMode, setThemeMode, isDark } = useThemeContext();
-  const { colors, spacing, fontSize, borderRadius } = theme;
+  const { colors } = theme;
   const { user, profile, currentOrganization, membership, signOut } = useAuthStore();
   const router = useRouter();
+
+  const isAdmin = ['owner', 'admin'].includes(membership?.role || '');
 
   const handleSignOut = async () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -36,6 +38,7 @@ export default function SettingsScreen() {
       <ThemedHeader title="Settings" />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Profile Card */}
         <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={[styles.profileAvatar, { backgroundColor: colors.surfaceAlt }]}>
             <Icon name={icons.person} size={28} color={colors.primary} />
@@ -45,12 +48,13 @@ export default function SettingsScreen() {
             <ThemedText variant="muted">{user?.email}</ThemedText>
             {currentOrganization && (
               <ThemedText variant="caption" style={{ color: colors.primary, marginTop: 4 }}>
-                {currentOrganization.name}
+                {currentOrganization.name} • {membership?.role}
               </ThemedText>
             )}
           </View>
         </View>
 
+        {/* Appearance */}
         <ThemedText variant="label" style={styles.sectionLabel}>Appearance</ThemedText>
         <ThemedCard variant="outlined" padding="sm">
           {themeOptions.map((option) => (
@@ -76,30 +80,120 @@ export default function SettingsScreen() {
           ))}
         </ThemedCard>
 
-        {membership && (
+        {/* Phone Numbers */}
+        <ThemedText variant="label" style={styles.sectionLabel}>Phone System</ThemedText>
+        <ThemedCard variant="outlined" padding="sm">
+          <TouchableOpacity
+            style={[styles.settingRow, { borderBottomColor: colors.border }]}
+            onPress={() => router.push('/(tabs)/settings/numbers')}
+          >
+            <View style={styles.settingLeft}>
+              <Icon name={icons.phonePortrait} size={20} color={colors.icon} />
+              <ThemedText variant="body">Phone Numbers</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+            <View style={styles.settingLeft}>
+              <Icon name={icons.dialpad} size={20} color={colors.icon} />
+              <ThemedText variant="body">IVR Flows</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+            <View style={styles.settingLeft}>
+              <Icon name={icons.call} size={20} color={colors.icon} />
+              <ThemedText variant="body">Ring Groups</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingRow}>
+            <View style={styles.settingLeft}>
+              <Icon name={icons.clock} size={20} color={colors.icon} />
+              <ThemedText variant="body">Business Hours</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </ThemedCard>
+
+        {/* AI & Automation */}
+        <ThemedText variant="label" style={styles.sectionLabel}>AI & Automation</ThemedText>
+        <ThemedCard variant="outlined" padding="sm">
+          <TouchableOpacity style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+            <View style={styles.settingLeft}>
+              <Icon name={icons.mic} size={20} color={colors.icon} />
+              <ThemedText variant="body">AI Receptionist</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+            <View style={styles.settingLeft}>
+              <Icon name={icons.document} size={20} color={colors.icon} />
+              <ThemedText variant="body">Knowledge Base</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingRow}>
+            <View style={styles.settingLeft}>
+              <Icon name={icons.stats} size={20} color={colors.icon} />
+              <ThemedText variant="body">Automations</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </ThemedCard>
+
+        {/* Billing */}
+        <ThemedText variant="label" style={styles.sectionLabel}>Billing</ThemedText>
+        <ThemedCard variant="outlined" padding="sm">
+          <TouchableOpacity
+            style={[styles.settingRow, { borderBottomColor: colors.border }]}
+            onPress={() => router.push('/(tabs)/settings/billing')}
+          >
+            <View style={styles.settingLeft}>
+              <Icon name={icons.star} size={20} color={colors.icon} />
+              <ThemedText variant="body">Subscription & Plans</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingRow}>
+            <View style={styles.settingLeft}>
+              <Icon name={icons.document} size={20} color={colors.icon} />
+              <ThemedText variant="body">Invoices</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </ThemedCard>
+
+        {/* Team */}
+        {isAdmin && (
           <>
-            <ThemedText variant="label" style={styles.sectionLabel}>Organization</ThemedText>
-            <ThemedCard variant="outlined" padding="md">
-              <View style={styles.infoRow}>
-                <ThemedText variant="muted">Role</ThemedText>
-                <ThemedText variant="body" weight="600" style={{ textTransform: 'capitalize' }}>
-                  {membership.role}
-                </ThemedText>
-              </View>
-              <View style={[styles.infoRow, { borderTopColor: colors.border }]}>
-                <ThemedText variant="muted">Organization</ThemedText>
-                <ThemedText variant="body" weight="600">{currentOrganization?.name}</ThemedText>
-              </View>
+            <ThemedText variant="label" style={styles.sectionLabel}>Team</ThemedText>
+            <ThemedCard variant="outlined" padding="sm">
+              <TouchableOpacity style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+                <View style={styles.settingLeft}>
+                  <Icon name={icons.people} size={20} color={colors.icon} />
+                  <ThemedText variant="body">Team Members</ThemedText>
+                </View>
+                <Icon name={icons.forward} size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <Icon name={icons.shield} size={20} color={colors.icon} />
+                  <ThemedText variant="body">Roles & Permissions</ThemedText>
+                </View>
+                <Icon name={icons.forward} size={18} color={colors.textMuted} />
+              </TouchableOpacity>
             </ThemedCard>
           </>
         )}
 
-        <ThemedText variant="label" style={styles.sectionLabel}>Account</ThemedText>
+        {/* Security */}
+        <ThemedText variant="label" style={styles.sectionLabel}>Security</ThemedText>
         <ThemedCard variant="outlined" padding="sm">
           <TouchableOpacity style={[styles.settingRow, { borderBottomColor: colors.border }]}>
             <View style={styles.settingLeft}>
-              <Icon name={icons.person} size={20} color={colors.icon} />
-              <ThemedText variant="body">Edit Profile</ThemedText>
+              <Icon name={icons.lock} size={20} color={colors.icon} />
+              <ThemedText variant="body">Privacy & Security</ThemedText>
             </View>
             <Icon name={icons.forward} size={18} color={colors.textMuted} />
           </TouchableOpacity>
@@ -110,22 +204,35 @@ export default function SettingsScreen() {
             </View>
             <Icon name={icons.forward} size={18} color={colors.textMuted} />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.settingLeft}>
-              <Icon name={icons.shield} size={20} color={colors.icon} />
-              <ThemedText variant="body">Privacy & Security</ThemedText>
-            </View>
-            <Icon name={icons.forward} size={18} color={colors.textMuted} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.settingRow}>
             <View style={styles.settingLeft}>
-              <Icon name={icons.info} size={20} color={colors.icon} />
-              <ThemedText variant="body">Help & Support</ThemedText>
+              <Icon name={icons.time} size={20} color={colors.icon} />
+              <ThemedText variant="body">Audit Log</ThemedText>
             </View>
             <Icon name={icons.forward} size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </ThemedCard>
 
+        {/* Support */}
+        <ThemedText variant="label" style={styles.sectionLabel}>Support</ThemedText>
+        <ThemedCard variant="outlined" padding="sm">
+          <TouchableOpacity style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+            <View style={styles.settingLeft}>
+              <Icon name={icons.info} size={20} color={colors.icon} />
+              <ThemedText variant="body">Help Center</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingRow}>
+            <View style={styles.settingLeft}>
+              <Icon name={icons.globe} size={20} color={colors.icon} />
+              <ThemedText variant="body">API Documentation</ThemedText>
+            </View>
+            <Icon name={icons.forward} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </ThemedCard>
+
+        {/* Sign Out */}
         <ThemedButton
           title="Sign Out"
           onPress={handleSignOut}
@@ -176,12 +283,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-  },
   version: { marginTop: 24 },
 });
