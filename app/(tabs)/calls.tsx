@@ -1,10 +1,9 @@
-// Calls Tab - Real call history from Supabase
 import { useEffect, useState, useCallback } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
 import { useAuthStore, useAppStore } from '../../src/stores';
-import { ThemedView, ThemedText, ThemedCard, ThemedHeader, ThemedInput, Icon, icons } from '../../src/components/ui';
+import { ThemedView, ThemedText, ThemedHeader, ThemedInput, Icon, icons } from '../../src/components/ui';
 
 export default function CallsScreen() {
   const { theme } = useThemeContext();
@@ -17,9 +16,7 @@ export default function CallsScreen() {
   const [filter, setFilter] = useState<'all' | 'missed' | 'incoming' | 'outgoing'>('all');
 
   useEffect(() => {
-    if (currentOrganization?.id) {
-      loadCalls(currentOrganization.id);
-    }
+    if (currentOrganization?.id) loadCalls(currentOrganization.id);
   }, [currentOrganization?.id]);
 
   const onRefresh = useCallback(async () => {
@@ -34,49 +31,32 @@ export default function CallsScreen() {
       call.from_number?.includes(search) ||
       call.to_number?.includes(search) ||
       call.contacts?.name?.toLowerCase().includes(search.toLowerCase());
-
-    const matchesFilter =
-      filter === 'all' ||
+    const matchesFilter = filter === 'all' ||
       (filter === 'missed' && ['no_answer', 'busy', 'failed'].includes(call.status)) ||
       (filter === 'incoming' && call.direction === 'inbound') ||
       (filter === 'outgoing' && call.direction === 'outbound');
-
     return matchesSearch && matchesFilter;
   });
 
-  const formatDuration = (seconds: number) => {
-    if (!seconds || seconds < 60) return `${seconds || 0}s`;
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
+  const formatDuration = (s: number) => {
+    if (!s || s < 60) return `${s || 0}s`;
+    return `${Math.floor(s / 60)}m ${s % 60}s`;
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return colors.success;
-      case 'ringing':
-      case 'in_progress': return colors.primary;
-      case 'no_answer':
-      case 'busy':
-      case 'failed': return colors.error;
-      default: return colors.textMuted;
-    }
+    if (['completed'].includes(status)) return colors.success;
+    if (['ringing', 'in_progress'].includes(status)) return colors.primary;
+    if (['no_answer', 'busy', 'failed'].includes(status)) return colors.error;
+    return colors.textMuted;
   };
-
-  const filters = [
-    { key: 'all', label: 'All' },
-    { key: 'missed', label: 'Missed' },
-    { key: 'incoming', label: 'Incoming' },
-    { key: 'outgoing', label: 'Outgoing' },
-  ] as const;
 
   return (
     <ThemedView variant="default" style={styles.container}>
       <ThemedHeader
         title="Calls"
-        subtitle={`${calls.length} total calls`}
+        subtitle={`${calls.length} calls`}
         rightAction={
-          <TouchableOpacity onPress={() => router.push('/dialpad')}>
+          <TouchableOpacity onPress={() => router.push('/dialpad')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Icon name={icons.add} size={24} color={colors.primary} />
           </TouchableOpacity>
         }
@@ -84,9 +64,7 @@ export default function CallsScreen() {
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
         <ThemedInput
@@ -97,14 +75,14 @@ export default function CallsScreen() {
         />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterContent}>
-          {filters.map(f => (
+          {(['all', 'missed', 'incoming', 'outgoing'] as const).map(f => (
             <TouchableOpacity
-              key={f.key}
-              onPress={() => setFilter(f.key)}
-              style={[styles.filterChip, { backgroundColor: filter === f.key ? colors.primary : colors.surfaceAlt, borderRadius: borderRadius.full }]}
+              key={f}
+              onPress={() => setFilter(f)}
+              style={[styles.filterChip, { backgroundColor: filter === f ? colors.primary : colors.surfaceAlt, borderRadius: borderRadius.full }]}
             >
-              <Text style={[styles.filterText, { color: filter === f.key ? '#FFFFFF' : colors.textSecondary }]}>
-                {f.label}
+              <Text style={[styles.filterText, { color: filter === f ? '#FFFFFF' : colors.textSecondary }]}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -118,45 +96,32 @@ export default function CallsScreen() {
           <View style={styles.emptyState}>
             <Icon name={icons.call} size={48} color={colors.textMuted} />
             <ThemedText variant="subtitle" align="center">No calls found</ThemedText>
-            <ThemedText variant="muted" align="center">
-              {search ? 'Try a different search' : 'Your call history will appear here'}
-            </ThemedText>
+            <ThemedText variant="muted" align="center">{search ? 'Try a different search' : 'Your call history will appear here'}</ThemedText>
           </View>
         ) : (
           filteredCalls.map(call => (
-            <ThemedCard key={call.id} variant="outlined" padding="md" style={styles.callItem}>
-              <View style={styles.callRow}>
-                <View style={[styles.callAvatar, { backgroundColor: colors.surfaceAlt }]}>
-                  <Icon
-                    name={call.direction === 'inbound' ? icons.call : icons.phoneFilled}
-                    size={20}
-                    color={getStatusColor(call.status)}
-                  />
-                </View>
-                <View style={styles.callInfo}>
-                  <ThemedText variant="body" weight="600">
-                    {call.contacts?.name || (call.direction === 'inbound' ? call.from_number : call.to_number)}
-                  </ThemedText>
-                  <ThemedText variant="caption" style={{ color: getStatusColor(call.status) }}>
-                    {call.direction === 'inbound' ? 'Incoming' : 'Outgoing'} • {call.status}
-                    {call.duration_seconds > 0 && ` • ${formatDuration(call.duration_seconds)}`}
-                  </ThemedText>
-                  {call.ai_summary && (
-                    <ThemedText variant="caption" numberOfLines={1} style={{ color: colors.textMuted }}>
-                      {call.ai_summary}
-                    </ThemedText>
-                  )}
-                </View>
-                <View style={styles.callRight}>
-                  <ThemedText variant="caption">
-                    {new Date(call.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </ThemedText>
-                  <ThemedText variant="caption" style={{ color: colors.textMuted }}>
-                    {new Date(call.started_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                  </ThemedText>
-                </View>
+            <TouchableOpacity key={call.id} style={[styles.callItem, { backgroundColor: colors.surfaceAlt }]}>
+              <View style={[styles.callAvatar, { backgroundColor: colors.surface }]}>
+                <Icon name={call.direction === 'inbound' ? icons.call : icons.phoneFilled} size={20} color={getStatusColor(call.status)} />
               </View>
-            </ThemedCard>
+              <View style={styles.callInfo}>
+                <ThemedText variant="body" weight="600">
+                  {call.contacts?.name || (call.direction === 'inbound' ? call.from_number : call.to_number)}
+                </ThemedText>
+                <ThemedText variant="caption" style={{ color: getStatusColor(call.status) }}>
+                  {call.direction === 'inbound' ? 'Incoming' : 'Outgoing'} • {call.status}
+                  {call.duration_seconds > 0 && ` • ${formatDuration(call.duration_seconds)}`}
+                </ThemedText>
+              </View>
+              <View style={styles.callRight}>
+                <ThemedText variant="caption">
+                  {new Date(call.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </ThemedText>
+                <ThemedText variant="caption" style={{ color: colors.textMuted }}>
+                  {new Date(call.started_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                </ThemedText>
+              </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
@@ -166,15 +131,14 @@ export default function CallsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
-  filterRow: { marginVertical: 16 },
+  scrollContent: { padding: 16, paddingBottom: 24 },
+  filterRow: { marginVertical: 12 },
   filterContent: { gap: 8 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 8 },
   filterText: { fontSize: 14, fontWeight: '600' },
-  callItem: { marginBottom: 8 },
-  callRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  callItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 8, gap: 12 },
   callAvatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  callInfo: { flex: 1 },
+  callInfo: { flex: 1, gap: 2 },
   callRight: { alignItems: 'flex-end', gap: 2 },
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 8 },
 });

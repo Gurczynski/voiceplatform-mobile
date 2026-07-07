@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Vibration, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Vibration, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useThemeContext } from '../src/theme/ThemeProvider';
 import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../src/components/ui';
 
-const DIAL_KEYS = [
+const KEYS = [
   [{ key: '1', sub: '' }, { key: '2', sub: 'ABC' }, { key: '3', sub: 'DEF' }],
   [{ key: '4', sub: 'GHI' }, { key: '5', sub: 'JKL' }, { key: '6', sub: 'MNO' }],
   [{ key: '7', sub: 'PQRS' }, { key: '8', sub: 'TUV' }, { key: '9', sub: 'WXYZ' }],
@@ -13,33 +13,18 @@ const DIAL_KEYS = [
 
 export default function DialPadScreen() {
   const { theme } = useThemeContext();
-  const { colors, spacing, fontSize, borderRadius } = theme;
+  const { colors } = theme;
   const [number, setNumber] = useState('');
 
   const handlePress = (key: string) => {
-    if (Platform.OS !== 'web') {
-      Vibration.vibrate(10);
-    }
-    setNumber((prev) => prev + key);
+    if (Platform.OS !== 'web') Vibration.vibrate(10);
+    setNumber(prev => prev + key);
   };
 
-  const handleBackspace = () => {
-    setNumber((prev) => prev.slice(0, -1));
-  };
-
-  const handleCall = () => {
-    if (number.length > 0) {
-      router.push({
-        pathname: '/call/active',
-        params: { number: `+1${number}`, direction: 'outbound' },
-      });
-    }
-  };
-
-  const formatPhoneNumber = (num: string) => {
-    if (num.length <= 3) return num;
-    if (num.length <= 6) return `(${num.slice(0, 3)}) ${num.slice(3)}`;
-    return `(${num.slice(0, 3)}) ${num.slice(3, 6)}-${num.slice(6, 10)}`;
+  const formatNumber = (n: string) => {
+    if (n.length <= 3) return n;
+    if (n.length <= 6) return `(${n.slice(0, 3)}) ${n.slice(3)}`;
+    return `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6, 10)}`;
   };
 
   return (
@@ -47,27 +32,20 @@ export default function DialPadScreen() {
       <ThemedHeader title="Dial Pad" showBack />
 
       <View style={styles.content}>
-        <View style={styles.numberDisplay}>
+        <View style={styles.display}>
           <ThemedText variant="display" align="center" numberOfLines={1} adjustsFontSizeToFit>
-            {number ? formatPhoneNumber(number) : ' '}
+            {number ? formatNumber(number) : ' '}
           </ThemedText>
-          {number.length === 0 && (
-            <ThemedText variant="muted" align="center">Enter a phone number</ThemedText>
-          )}
+          {!number && <ThemedText variant="muted" align="center">Enter a phone number</ThemedText>}
         </View>
 
         <View style={styles.keypad}>
-          {DIAL_KEYS.map((row, rowIndex) => (
-            <View key={rowIndex} style={styles.keyRow}>
-              {row.map((item) => (
-                <TouchableOpacity
-                  key={item.key}
-                  onPress={() => handlePress(item.key)}
-                  style={[styles.keyButton, { backgroundColor: colors.surfaceAlt }]}
-                  activeOpacity={0.6}
-                >
-                  <Text style={[styles.keyText, { color: colors.text }]}>{item.key}</Text>
-                  {item.sub ? <Text style={[styles.keySub, { color: colors.textMuted }]}>{item.sub}</Text> : null}
+          {KEYS.map((row, i) => (
+            <View key={i} style={styles.keyRow}>
+              {row.map(item => (
+                <TouchableOpacity key={item.key} onPress={() => handlePress(item.key)} style={[styles.keyBtn, { backgroundColor: colors.surfaceAlt }]} activeOpacity={0.6}>
+                  <ThemedText variant="title" style={{ color: colors.text }}>{item.key}</ThemedText>
+                  {item.sub ? <ThemedText variant="caption" style={{ color: colors.textMuted, marginTop: -2 }}>{item.sub}</ThemedText> : null}
                 </TouchableOpacity>
               ))}
             </View>
@@ -76,33 +54,26 @@ export default function DialPadScreen() {
 
         <View style={styles.actions}>
           <TouchableOpacity
-            onPress={handleCall}
-            style={[styles.callButton, { backgroundColor: number.length > 0 ? colors.success : colors.surfaceAlt }]}
+            onPress={() => number.length > 0 && router.push({ pathname: '/call/active', params: { number: `+1${number}`, direction: 'outbound' } })}
+            style={[styles.callBtn, { backgroundColor: number.length > 0 ? colors.success : colors.surfaceAlt }]}
             disabled={number.length === 0}
           >
-            <Icon name={icons.call} size={32} color={number.length > 0 ? '#FFFFFF' : colors.textMuted} />
+            <Icon name={icons.call} size={32} color={number.length > 0 ? '#FFF' : colors.textMuted} />
           </TouchableOpacity>
-
           {number.length > 0 && (
-            <TouchableOpacity onPress={handleBackspace} style={styles.backspaceButton}>
+            <TouchableOpacity onPress={() => setNumber(prev => prev.slice(0, -1))} style={styles.delBtn}>
               <Icon name={icons.back} size={28} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
 
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={[styles.quickAction, { backgroundColor: colors.surfaceAlt }]}>
-            <Icon name={icons.people} size={22} color={colors.icon} />
-            <ThemedText variant="caption">Contacts</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.quickAction, { backgroundColor: colors.surfaceAlt }]}>
-            <Icon name={icons.star} size={22} color={colors.icon} />
-            <ThemedText variant="caption">Favorites</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.quickAction, { backgroundColor: colors.surfaceAlt }]}>
-            <Icon name={icons.clock} size={22} color={colors.icon} />
-            <ThemedText variant="caption">Recents</ThemedText>
-          </TouchableOpacity>
+        <View style={styles.shortcuts}>
+          {[{ icon: icons.people, label: 'Contacts' }, { icon: icons.star, label: 'Favorites' }, { icon: icons.clock, label: 'Recents' }].map(s => (
+            <TouchableOpacity key={s.label} style={[styles.shortcut, { backgroundColor: colors.surfaceAlt }]}>
+              <Icon name={s.icon} size={22} color={colors.icon} />
+              <ThemedText variant="caption">{s.label}</ThemedText>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
     </ThemedView>
@@ -111,48 +82,14 @@ export default function DialPadScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { flex: 1, justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 32 },
-  numberDisplay: {
-    paddingVertical: 32,
-    minHeight: 80,
-    justifyContent: 'center',
-  },
+  content: { flex: 1, justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 24 },
+  display: { paddingVertical: 32, minHeight: 80, justifyContent: 'center' },
   keypad: { gap: 12 },
   keyRow: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
-  keyButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  keyText: { fontSize: 28, fontWeight: '500' },
-  keySub: { fontSize: 10, fontWeight: '600', marginTop: -2 },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 32,
-    paddingVertical: 16,
-  },
-  callButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backspaceButton: { padding: 16 },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 16,
-  },
-  quickAction: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    gap: 4,
-  },
+  keyBtn: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
+  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, paddingVertical: 16 },
+  callBtn: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
+  delBtn: { padding: 16 },
+  shortcuts: { flexDirection: 'row', justifyContent: 'space-around', paddingTop: 16 },
+  shortcut: { alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 16, gap: 4 },
 });

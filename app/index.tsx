@@ -1,15 +1,17 @@
 import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../src/theme/ThemeProvider';
 import { ThemedView, ThemedText, ThemedButton, Icon, icons } from '../src/components/ui';
 
 export default function WelcomeScreen() {
   const { theme } = useThemeContext();
-  const { colors, spacing, fontSize, borderRadius } = theme;
+  const { colors } = theme;
+  const insets = useSafeAreaInsets();
 
   return (
     <ThemedView variant="default" style={styles.container}>
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }]}>
         <View style={styles.header}>
           <View style={[styles.logo, { backgroundColor: colors.primary }]}>
             <Icon name={icons.call} size={40} color="#FFFFFF" />
@@ -24,16 +26,31 @@ export default function WelcomeScreen() {
 
         <View style={styles.features}>
           <View style={styles.featureRow}>
-            <Icon name={icons.dialpad} size={22} color={colors.primary} />
-            <ThemedText variant="body" style={{ flex: 1 }}>Smart call routing & AI receptionist</ThemedText>
+            <View style={[styles.featureIcon, { backgroundColor: colors.surfaceAlt }]}>
+              <Icon name={icons.dialpad} size={20} color={colors.primary} />
+            </View>
+            <View style={styles.featureText}>
+              <ThemedText variant="body" weight="600">Smart Call Routing</ThemedText>
+              <ThemedText variant="caption">AI receptionist & IVR flows</ThemedText>
+            </View>
           </View>
           <View style={styles.featureRow}>
-            <Icon name={icons.chat} size={22} color={colors.primary} />
-            <ThemedText variant="body" style={{ flex: 1 }}>Unified messaging & SMS</ThemedText>
+            <View style={[styles.featureIcon, { backgroundColor: colors.surfaceAlt }]}>
+              <Icon name={icons.chat} size={20} color={colors.primary} />
+            </View>
+            <View style={styles.featureText}>
+              <ThemedText variant="body" weight="600">Unified Messaging</ThemedText>
+              <ThemedText variant="caption">SMS, MMS & team inbox</ThemedText>
+            </View>
           </View>
           <View style={styles.featureRow}>
-            <Icon name={icons.stats} size={22} color={colors.primary} />
-            <ThemedText variant="body" style={{ flex: 1 }}>Analytics & call insights</ThemedText>
+            <View style={[styles.featureIcon, { backgroundColor: colors.surfaceAlt }]}>
+              <Icon name={icons.stats} size={20} color={colors.primary} />
+            </View>
+            <View style={styles.featureText}>
+              <ThemedText variant="body" weight="600">Analytics & Insights</ThemedText>
+              <ThemedText variant="caption">Call summaries & reporting</ThemedText>
+            </View>
           </View>
         </View>
 
@@ -43,14 +60,12 @@ export default function WelcomeScreen() {
             onPress={() => router.push('/auth')}
             variant="primary"
             size="lg"
-            icon={<Icon name={icons.logIn} size={20} color="#FFFFFF" />}
           />
           <ThemedButton
             title="Create Account"
-            onPress={() => router.push('/auth')}
+            onPress={() => router.push('/auth?mode=signup')}
             variant="outline"
             size="lg"
-            icon={<Icon name={icons.personAdd} size={20} color={colors.primary} />}
           />
         </View>
       </View>
@@ -60,17 +75,18 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { flex: 1, justifyContent: 'center', padding: 24, gap: 40 },
-  header: { alignItems: 'center', gap: 12 },
+  content: { flex: 1, justifyContent: 'space-between', paddingHorizontal: 24 },
+  header: { alignItems: 'center', gap: 16 },
   logo: {
     width: 80,
     height: 80,
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  features: { gap: 16, paddingHorizontal: 16 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  features: { gap: 20 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  featureIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  featureText: { flex: 1, gap: 2 },
   actions: { gap: 12 },
 });

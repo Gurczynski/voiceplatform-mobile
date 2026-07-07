@@ -29,6 +29,7 @@ function RootLayoutNav() {
         headerShown: false,
         contentStyle: { backgroundColor: colors.background },
         animation: 'fade',
+        animationDuration: 200,
       }}
     />
   );

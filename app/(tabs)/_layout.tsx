@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
 import { Icon, icons } from '../../src/components/ui';
@@ -17,18 +17,19 @@ export default function TabsLayout() {
           backgroundColor: colors.tabBar,
           borderTopColor: colors.tabBarBorder,
           borderTopWidth: 1,
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom + 4,
-          paddingTop: 4,
+          height: Platform.OS === 'ios' ? 85 + insets.bottom : 65,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom + 4 : 8,
+          paddingTop: 8,
         },
         tabBarActiveTintColor: colors.tabBarActive,
         tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarLabelStyle: {
           fontSize: fontSize.xs,
           fontWeight: '600',
+          marginTop: -2,
         },
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingVertical: 2,
         },
       }}
     >

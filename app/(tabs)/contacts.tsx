@@ -1,9 +1,8 @@
-// Contacts Tab - Real contacts from Supabase
 import { useEffect, useState, useCallback } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
 import { useAuthStore, useAppStore } from '../../src/stores';
-import { ThemedView, ThemedText, ThemedCard, ThemedHeader, ThemedInput, Icon, icons } from '../../src/components/ui';
+import { ThemedView, ThemedText, ThemedHeader, ThemedInput, Icon, icons } from '../../src/components/ui';
 
 export default function ContactsScreen() {
   const { theme } = useThemeContext();
@@ -14,9 +13,7 @@ export default function ContactsScreen() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    if (currentOrganization?.id) {
-      loadContacts(currentOrganization.id);
-    }
+    if (currentOrganization?.id) loadContacts(currentOrganization.id);
   }, [currentOrganization?.id]);
 
   const onRefresh = useCallback(async () => {
@@ -26,24 +23,22 @@ export default function ContactsScreen() {
     setRefreshing(false);
   }, [currentOrganization?.id]);
 
-  const filteredContacts = contacts.filter(contact => {
+  const filteredContacts = contacts.filter(c => {
     if (!search) return true;
     return (
-      contact.name?.toLowerCase().includes(search.toLowerCase()) ||
-      contact.phone_number?.includes(search) ||
-      contact.email?.toLowerCase().includes(search.toLowerCase()) ||
-      contact.company?.toLowerCase().includes(search.toLowerCase())
+      c.name?.toLowerCase().includes(search.toLowerCase()) ||
+      c.phone_number?.includes(search) ||
+      c.email?.toLowerCase().includes(search.toLowerCase()) ||
+      c.company?.toLowerCase().includes(search.toLowerCase())
     );
   });
 
-  const groupedContacts = filteredContacts.reduce((acc, contact) => {
-    const firstLetter = (contact.name || contact.phone_number || '#')[0].toUpperCase();
-    if (!acc[firstLetter]) acc[firstLetter] = [];
-    acc[firstLetter].push(contact);
+  const grouped = filteredContacts.reduce((acc, c) => {
+    const letter = (c.name || c.phone_number || '#')[0].toUpperCase();
+    if (!acc[letter]) acc[letter] = [];
+    acc[letter].push(c);
     return acc;
   }, {} as Record<string, typeof filteredContacts>);
-
-  const sortedLetters = Object.keys(groupedContacts).sort();
 
   return (
     <ThemedView variant="default" style={styles.container}>
@@ -51,7 +46,7 @@ export default function ContactsScreen() {
         title="Contacts"
         subtitle={`${contacts.length} contacts`}
         rightAction={
-          <TouchableOpacity>
+          <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Icon name={icons.personAdd} size={24} color={colors.primary} />
           </TouchableOpacity>
         }
@@ -59,9 +54,7 @@ export default function ContactsScreen() {
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
         <ThemedInput
@@ -75,41 +68,33 @@ export default function ContactsScreen() {
           <View style={styles.emptyState}>
             <ThemedText variant="muted">Loading contacts...</ThemedText>
           </View>
-        ) : sortedLetters.length === 0 ? (
+        ) : Object.keys(grouped).length === 0 ? (
           <View style={styles.emptyState}>
             <Icon name={icons.people} size={48} color={colors.textMuted} />
             <ThemedText variant="subtitle" align="center">No contacts found</ThemedText>
-            <ThemedText variant="muted" align="center">
-              {search ? 'Try a different search' : 'Add contacts to get started'}
-            </ThemedText>
+            <ThemedText variant="muted" align="center">{search ? 'Try a different search' : 'Add contacts to get started'}</ThemedText>
           </View>
         ) : (
-          sortedLetters.map(letter => (
+          Object.keys(grouped).sort().map(letter => (
             <View key={letter} style={styles.letterGroup}>
               <View style={[styles.letterHeader, { backgroundColor: colors.surfaceAlt }]}>
-                <ThemedText variant="label" style={{ color: colors.primary }}>{letter}</ThemedText>
+                <Text style={[styles.letterText, { color: colors.primary }]}>{letter}</Text>
               </View>
-              {groupedContacts[letter].map(contact => (
-                <ThemedCard key={contact.id} variant="outlined" padding="md" style={styles.contactItem}>
-                  <View style={styles.contactRow}>
-                    <View style={[styles.contactAvatar, { backgroundColor: colors.surfaceAlt }]}>
-                      <Icon name={icons.person} size={20} color={colors.primary} />
-                    </View>
-                    <View style={styles.contactInfo}>
-                      <ThemedText variant="body" weight="600">
-                        {contact.name || 'Unknown'}
-                      </ThemedText>
-                      <ThemedText variant="caption">{contact.phone_number}</ThemedText>
-                      {contact.company && (
-                        <ThemedText variant="caption" style={{ color: colors.textMuted }}>{contact.company}</ThemedText>
-                      )}
-                    </View>
-                    <View style={styles.contactActions}>
-                      {contact.is_vip && <Icon name={icons.starFilled} size={16} color={colors.warning} />}
-                      {contact.is_blocked && <Icon name={icons.alert} size={16} color={colors.error} />}
-                    </View>
+              {grouped[letter].map(contact => (
+                <TouchableOpacity key={contact.id} style={[styles.contactItem, { backgroundColor: colors.surfaceAlt }]}>
+                  <View style={[styles.contactAvatar, { backgroundColor: colors.surface }]}>
+                    <Icon name={icons.person} size={20} color={colors.primary} />
                   </View>
-                </ThemedCard>
+                  <View style={styles.contactInfo}>
+                    <ThemedText variant="body" weight="600">{contact.name || 'Unknown'}</ThemedText>
+                    <ThemedText variant="caption">{contact.phone_number}</ThemedText>
+                    {contact.company && <ThemedText variant="caption" style={{ color: colors.textMuted }}>{contact.company}</ThemedText>}
+                  </View>
+                  <View style={styles.contactActions}>
+                    {contact.is_vip && <Icon name={icons.starFilled} size={16} color={colors.warning} />}
+                    {contact.is_blocked && <Icon name={icons.alert} size={16} color={colors.error} />}
+                  </View>
+                </TouchableOpacity>
               ))}
             </View>
           ))
@@ -121,13 +106,13 @@ export default function ContactsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { padding: 16, paddingBottom: 24 },
+  emptyState: { alignItems: 'center', paddingVertical: 60, gap: 8 },
   letterGroup: { marginBottom: 16 },
   letterHeader: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginBottom: 8 },
-  contactItem: { marginBottom: 6 },
-  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  letterText: { fontSize: 14, fontWeight: '700' },
+  contactItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 6, gap: 12 },
   contactAvatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   contactInfo: { flex: 1, gap: 2 },
   contactActions: { flexDirection: 'row', gap: 4 },
-  emptyState: { alignItems: 'center', paddingVertical: 60, gap: 8 },
 });

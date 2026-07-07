@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../src/theme/ThemeProvider';
 import { useAuthStore } from '../src/stores';
 import { ThemedView, ThemedText, ThemedInput, ThemedButton, ThemedHeader, Icon, icons } from '../src/components/ui';
 
 export default function AuthScreen() {
   const { theme } = useThemeContext();
-  const { colors, spacing, fontSize, borderRadius } = theme;
+  const { colors } = theme;
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ mode?: string }>();
   const signIn = useAuthStore((s) => s.signIn);
   const signUp = useAuthStore((s) => s.signUp);
 
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup'>(params.mode === 'signup' ? 'signup' : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -53,7 +56,7 @@ export default function AuthScreen() {
         style={styles.flex}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -69,7 +72,7 @@ export default function AuthScreen() {
           {error ? (
             <View style={[styles.errorBox, { backgroundColor: colors.error + '15', borderColor: colors.error }]}>
               <Icon name={icons.alert} size={18} color={colors.error} />
-              <ThemedText style={{ color: colors.error }}>{error}</ThemedText>
+              <ThemedText variant="body" style={{ color: colors.error, flex: 1 }}>{error}</ThemedText>
             </View>
           ) : null}
 
@@ -112,7 +115,6 @@ export default function AuthScreen() {
               loading={loading}
               variant="primary"
               size="lg"
-              icon={<Icon name={mode === 'signin' ? icons.logIn : icons.personAdd} size={20} color="#FFFFFF" />}
             />
 
             <TouchableOpacity onPress={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }}>
@@ -132,7 +134,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
-  scrollContent: { padding: 24, paddingBottom: 40 },
+  scrollContent: { padding: 24 },
   header: { alignItems: 'center', marginBottom: 32, gap: 12 },
   logo: {
     width: 64,
@@ -144,8 +146,8 @@ const styles = StyleSheet.create({
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 12,
+    gap: 10,
+    padding: 14,
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 16,
