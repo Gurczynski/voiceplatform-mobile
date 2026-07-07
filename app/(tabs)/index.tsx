@@ -64,7 +64,7 @@ export default function HomeScreen() {
         title="VoicePlatform"
         subtitle={currentOrganization?.name || 'Welcome back'}
         rightAction={
-          <TouchableOpacity onPress={() => router.push('/(tabs)/settings')} style={[styles.menuBtn, { backgroundColor: colors.surfaceAlt }]}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/more')} style={[styles.menuBtn, { backgroundColor: colors.surfaceAlt }]}>
             <Icon name={icons.menu} size={20} color={colors.icon} />
           </TouchableOpacity>
         }

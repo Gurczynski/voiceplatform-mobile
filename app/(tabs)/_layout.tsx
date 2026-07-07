@@ -26,13 +26,9 @@ export default function TabsLayout() {
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          marginTop: -2,
         },
         tabBarItemStyle: {
           paddingVertical: 4,
-        },
-        tabBarIconStyle: {
-          marginBottom: -2,
         },
       }}
     >
@@ -65,14 +61,14 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="more"
         options={{
           title: 'More',
           tabBarIcon: ({ color }) => <Icon name={icons.menu} size={24} color={color as string} />,
         }}
       />
 
-      {/* Hidden tabs - accessible via navigation */}
+      {/* Hidden screens - accessible via navigation only */}
       <Tabs.Screen name="contacts" options={{ href: null }} />
       <Tabs.Screen name="recordings" options={{ href: null }} />
     </Tabs>
