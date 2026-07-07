@@ -1,10 +1,11 @@
+// More Screen - Hub for all features
 import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
 import { useAuthStore } from '../../src/stores';
-import { ThemedView, ThemedText, ThemedHeader, ThemedButton, Icon, icons } from '../../src/components/ui';
+import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
 
-export default function SettingsScreen() {
+export default function MoreScreen() {
   const { theme, themeMode, setThemeMode } = useThemeContext();
   const { colors } = theme;
   const { user, profile, currentOrganization, membership, signOut } = useAuthStore();
@@ -18,130 +19,150 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const SettingRow = ({ icon, label, onPress, rightText }: { icon: any; label: string; onPress?: () => void; rightText?: string }) => (
-    <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={onPress} disabled={!onPress}>
-      <View style={styles.rowLeft}>
-        <Icon name={icon} size={20} color={colors.icon} />
-        <ThemedText variant="body">{label}</ThemedText>
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{title}</Text>
+      <View style={[styles.sectionCard, { backgroundColor: colors.surfaceAlt }]}>
+        {children}
       </View>
-      {rightText ? (
-        <ThemedText variant="caption" style={{ color: colors.textMuted }}>{rightText}</ThemedText>
-      ) : (
-        <Icon name={icons.forward} size={18} color={colors.textMuted} />
+    </View>
+  );
+
+  const Row = ({ icon, label, onPress, badge, color }: { icon: any; label: string; onPress?: () => void; badge?: string; color?: string }) => (
+    <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={onPress} disabled={!onPress}>
+      <View style={[styles.rowIcon, { backgroundColor: (color || colors.primary) + '15' }]}>
+        <Icon name={icon} size={20} color={color || colors.primary} />
+      </View>
+      <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+      {badge && (
+        <View style={[styles.badge, { backgroundColor: colors.error }]}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
       )}
+      <Icon name={icons.forward} size={18} color={colors.textMuted} />
     </TouchableOpacity>
   );
 
   return (
     <ThemedView variant="default" style={styles.container}>
-      <ThemedHeader title="Settings" />
+      <ThemedHeader title="More" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Profile Card */}
         <TouchableOpacity style={[styles.profileCard, { backgroundColor: colors.surfaceAlt }]}>
-          <View style={[styles.profileAvatar, { backgroundColor: colors.surface }]}>
-            <Icon name={icons.person} size={28} color={colors.primary} />
+          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+            <Text style={styles.avatarText}>{(profile?.full_name || user?.email || 'U')[0].toUpperCase()}</Text>
           </View>
           <View style={styles.profileInfo}>
-            <ThemedText variant="subtitle">{profile?.full_name || 'User'}</ThemedText>
-            <ThemedText variant="muted">{user?.email}</ThemedText>
+            <Text style={[styles.profileName, { color: colors.text }]}>{profile?.full_name || 'User'}</Text>
+            <Text style={[styles.profileEmail, { color: colors.textMuted }]}>{user?.email}</Text>
             {currentOrganization && (
-              <ThemedText variant="caption" style={{ color: colors.primary }}>{currentOrganization.name} • {membership?.role}</ThemedText>
+              <Text style={[styles.profileOrg, { color: colors.primary }]}>{currentOrganization.name} • {membership?.role}</Text>
             )}
           </View>
           <Icon name={icons.forward} size={18} color={colors.textMuted} />
         </TouchableOpacity>
 
-        <ThemedText variant="label" style={styles.sectionLabel}>Appearance</ThemedText>
-        <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
-          {(['light', 'dark', 'system'] as const).map(mode => (
-            <TouchableOpacity
-              key={mode}
-              style={[styles.row, { borderBottomColor: colors.border }]}
-              onPress={() => setThemeMode(mode)}
-            >
-              <View style={styles.rowLeft}>
-                <Icon name={mode === 'light' ? icons.sun : mode === 'dark' ? icons.moon : icons.phonePortrait} size={20} color={colors.icon} />
-                <ThemedText variant="body">{mode.charAt(0).toUpperCase() + mode.slice(1)}</ThemedText>
-              </View>
-              <View style={[styles.radio, { borderColor: themeMode === mode ? colors.primary : colors.border, backgroundColor: themeMode === mode ? colors.primary : 'transparent' }]}>
-                {themeMode === mode && <View style={styles.radioInner} />}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Quick Access */}
+        <Section title="QUICK ACCESS">
+          <Row icon={icons.mic} label="Voicemail" color="#8B5CF6" onPress={() => router.push('/(tabs)/voicemail')} />
+          <Row icon={icons.people} label="Contacts" color="#10B981" onPress={() => router.push('/(tabs)/contacts')} />
+          <Row icon={icons.recording} label="Recordings" color="#F59E0B" onPress={() => router.push('/(tabs)/recordings')} />
+        </Section>
 
-        <ThemedText variant="label" style={styles.sectionLabel}>Phone System</ThemedText>
-        <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
-          <SettingRow icon={icons.phonePortrait} label="Phone Numbers" onPress={() => router.push('/(tabs)/settings/numbers')} />
-          <SettingRow icon={icons.dialpad} label="IVR Flows" onPress={() => router.push('/(tabs)/settings/ivr')} />
-          <SettingRow icon={icons.call} label="Ring Groups" onPress={() => router.push('/(tabs)/settings/ring-groups')} />
-          <SettingRow icon={icons.clock} label="Business Hours" onPress={() => router.push('/(tabs)/settings/business-hours')} />
-          <SettingRow icon={icons.forward} label="Forwarding Rules" onPress={() => router.push('/(tabs)/settings/forwarding')} />
-        </View>
+        {/* Phone System */}
+        <Section title="PHONE SYSTEM">
+          <Row icon={icons.phonePortrait} label="Phone Numbers" color="#3B82F6" onPress={() => router.push('/(tabs)/settings/numbers')} />
+          <Row icon={icons.dialpad} label="IVR Flows" color="#8B5CF6" onPress={() => router.push('/(tabs)/settings/ivr')} />
+          <Row icon={icons.call} label="Ring Groups" color="#10B981" onPress={() => router.push('/(tabs)/settings/ring-groups')} />
+          <Row icon={icons.clock} label="Business Hours" color="#6366F1" onPress={() => router.push('/(tabs)/settings/business-hours')} />
+        </Section>
 
-        <ThemedText variant="label" style={styles.sectionLabel}>AI & Automation</ThemedText>
-        <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
-          <SettingRow icon={icons.mic} label="AI Receptionist" onPress={() => router.push('/(tabs)/settings/ai-agent')} />
-          <SettingRow icon={icons.document} label="Knowledge Base" onPress={() => router.push('/(tabs)/settings/knowledge-base')} />
-          <SettingRow icon={icons.stats} label="Automations" onPress={() => router.push('/(tabs)/settings/automations')} />
-        </View>
+        {/* AI & Automation */}
+        <Section title="AI & AUTOMATION">
+          <Row icon={icons.mic} label="AI Receptionist" color="#EC4899" onPress={() => router.push('/(tabs)/settings/ai-agent')} />
+          <Row icon={icons.document} label="Knowledge Base" color="#8B5CF6" onPress={() => router.push('/(tabs)/settings/knowledge-base')} />
+          <Row icon={icons.stats} label="Automations" color="#6366F1" onPress={() => router.push('/(tabs)/settings/automations')} />
+        </Section>
 
-        <ThemedText variant="label" style={styles.sectionLabel}>Billing</ThemedText>
-        <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
-          <SettingRow icon={icons.star} label="Subscription & Plans" onPress={() => router.push('/(tabs)/settings/billing')} />
-          <SettingRow icon={icons.document} label="Invoices" />
-        </View>
+        {/* Billing */}
+        <Section title="BILLING">
+          <Row icon={icons.star} label="Subscription & Plans" color="#F59E0B" onPress={() => router.push('/(tabs)/settings/billing')} />
+        </Section>
 
+        {/* Team (Admin only) */}
         {isAdmin && (
-          <>
-            <ThemedText variant="label" style={styles.sectionLabel}>Team</ThemedText>
-            <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
-              <SettingRow icon={icons.people} label="Team Members" onPress={() => router.push('/(tabs)/settings/team')} />
-              <SettingRow icon={icons.shield} label="Roles & Permissions" />
-            </View>
-          </>
+          <Section title="TEAM">
+            <Row icon={icons.people} label="Team Members" color="#3B82F6" onPress={() => router.push('/(tabs)/settings/team')} />
+            <Row icon={icons.shield} label="Roles & Permissions" color="#6366F1" />
+          </Section>
         )}
 
-        <ThemedText variant="label" style={styles.sectionLabel}>Security</ThemedText>
-        <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
-          <SettingRow icon={icons.lock} label="Privacy & Security" />
-          <SettingRow icon={icons.notifications} label="Notifications" />
-          <SettingRow icon={icons.shield} label="A2P Compliance" onPress={() => router.push('/(tabs)/settings/compliance')} />
-          <SettingRow icon={icons.time} label="Audit Log" onPress={() => router.push('/(tabs)/settings/audit-log')} />
-        </View>
+        {/* Security */}
+        <Section title="SECURITY">
+          <Row icon={icons.lock} label="Privacy & Security" color="#EF4444" />
+          <Row icon={icons.notifications} label="Notifications" color="#F59E0B" />
+          <Row icon={icons.shield} label="A2P Compliance" color="#10B981" onPress={() => router.push('/(tabs)/settings/compliance')} />
+          <Row icon={icons.time} label="Audit Log" color="#6366F1" onPress={() => router.push('/(tabs)/settings/audit-log')} />
+        </Section>
 
-        <ThemedText variant="label" style={styles.sectionLabel}>Support</ThemedText>
-        <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
-          <SettingRow icon={icons.info} label="Help Center" />
-          <SettingRow icon={icons.globe} label="API Documentation" />
-        </View>
+        {/* Appearance */}
+        <Section title="APPEARANCE">
+          <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => setThemeMode('light')}>
+            <View style={[styles.rowIcon, { backgroundColor: '#F59E0B15' }]}>
+              <Icon name={icons.sun} size={20} color="#F59E0B" />
+            </View>
+            <Text style={[styles.rowLabel, { color: colors.text }]}>Light</Text>
+            {themeMode === 'light' && <Icon name={icons.check} size={20} color={colors.primary} />}
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => setThemeMode('dark')}>
+            <View style={[styles.rowIcon, { backgroundColor: '#6366F115' }]}>
+              <Icon name={icons.moon} size={20} color="#6366F1" />
+            </View>
+            <Text style={[styles.rowLabel, { color: colors.text }]}>Dark</Text>
+            {themeMode === 'dark' && <Icon name={icons.check} size={20} color={colors.primary} />}
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => setThemeMode('system')}>
+            <View style={[styles.rowIcon, { backgroundColor: '#3B82F615' }]}>
+              <Icon name={icons.phonePortrait} size={20} color="#3B82F6" />
+            </View>
+            <Text style={[styles.rowLabel, { color: colors.text }]}>System</Text>
+            {themeMode === 'system' && <Icon name={icons.check} size={20} color={colors.primary} />}
+          </TouchableOpacity>
+        </Section>
 
-        <ThemedButton
-          title="Sign Out"
-          onPress={handleSignOut}
-          variant="danger"
-          size="md"
-          fullWidth
-          icon={<Icon name={icons.logOut} size={18} color="#FFFFFF" />}
-        />
+        {/* Sign Out */}
+        <TouchableOpacity style={[styles.signOutBtn, { backgroundColor: colors.error + '15' }]} onPress={handleSignOut}>
+          <Icon name={icons.logOut} size={20} color={colors.error} />
+          <Text style={[styles.signOutText, { color: colors.error }]}>Sign Out</Text>
+        </TouchableOpacity>
 
-        <ThemedText variant="caption" align="center" style={styles.version}>VoicePlatform v1.0.0</ThemedText>
+        <Text style={[styles.version, { color: colors.textMuted }]}>VoicePlatform v1.0.0</Text>
       </ScrollView>
     </ThemedView>
   );
 }
 
+import { Text } from 'react-native';
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 24 },
+  content: { padding: 16, paddingBottom: 24 },
   profileCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, marginBottom: 24, gap: 14 },
-  profileAvatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#FFF', fontSize: 22, fontWeight: '700' },
   profileInfo: { flex: 1, gap: 2 },
-  sectionLabel: { marginBottom: 10, marginTop: 8 },
-  card: { borderRadius: 12, marginBottom: 16, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  radioInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
-  version: { marginTop: 24 },
+  profileName: { fontSize: 18, fontWeight: '600' },
+  profileEmail: { fontSize: 14 },
+  profileOrg: { fontSize: 13, marginTop: 2 },
+  section: { marginBottom: 20 },
+  sectionTitle: { fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 },
+  sectionCard: { borderRadius: 16, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
+  rowIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  rowLabel: { flex: 1, fontSize: 16 },
+  badge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  badgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+  signOutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 12, marginTop: 8 },
+  signOutText: { fontSize: 16, fontWeight: '600' },
+  version: { textAlign: 'center', marginTop: 20, fontSize: 13 },
 });

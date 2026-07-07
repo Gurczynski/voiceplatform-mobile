@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
 import { Icon, icons } from '../../src/components/ui';
@@ -17,19 +17,19 @@ export default function TabsLayout() {
           backgroundColor: colors.tabBar,
           borderTopColor: colors.tabBarBorder,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 85 + insets.bottom : 65,
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom + 4 : 8,
+          height: Platform.OS === 'ios' ? 84 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
           paddingTop: 8,
         },
         tabBarActiveTintColor: colors.tabBarActive,
         tabBarInactiveTintColor: colors.tabBarInactive,
         tabBarLabelStyle: {
-          fontSize: fontSize.xs,
+          fontSize: 11,
           fontWeight: '600',
-          marginTop: -2,
         },
         tabBarItemStyle: {
-          paddingVertical: 2,
+          paddingVertical: 4,
+          gap: 2,
         },
       }}
     >
@@ -37,44 +37,51 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Icon name={icons.home} size={size} color={color as string} />,
+          tabBarIcon: ({ color, size }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={icons.home} size={22} color={color as string} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="calls"
         options={{
           title: 'Calls',
-          tabBarIcon: ({ color, size }) => <Icon name={icons.call} size={size} color={color as string} />,
+          tabBarIcon: ({ color, size }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={icons.call} size={22} color={color as string} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color, size }) => <Icon name={icons.chat} size={size} color={color as string} />,
-        }}
-      />
-      <Tabs.Screen
-        name="voicemail"
-        options={{
-          title: 'Voicemail',
-          tabBarIcon: ({ color, size }) => <Icon name={icons.mic} size={size} color={color as string} />,
-        }}
-      />
-      <Tabs.Screen
-        name="contacts"
-        options={{
-          title: 'Contacts',
-          tabBarIcon: ({ color, size }) => <Icon name={icons.people} size={size} color={color as string} />,
+          tabBarIcon: ({ color, size }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={icons.chat} size={22} color={color as string} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => <Icon name={icons.settings} size={size} color={color as string} />,
+          title: 'More',
+          tabBarIcon: ({ color, size }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={icons.menu} size={22} color={color as string} />
+            </View>
+          ),
         }}
       />
+
+      {/* Hidden tabs - accessible via navigation but not shown in tab bar */}
+      <Tabs.Screen name="voicemail" options={{ href: null }} />
+      <Tabs.Screen name="contacts" options={{ href: null }} />
+      <Tabs.Screen name="recordings" options={{ href: null }} />
     </Tabs>
   );
 }
