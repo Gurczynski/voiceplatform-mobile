@@ -48,7 +48,6 @@ export default function MoreScreen() {
       <ThemedHeader title="More" />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Card */}
         <TouchableOpacity style={[styles.profileCard, { backgroundColor: colors.surfaceAlt }]}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
             <Text style={styles.avatarText}>{(profile?.full_name || user?.email || 'U')[0].toUpperCase()}</Text>
@@ -63,14 +62,12 @@ export default function MoreScreen() {
           <Icon name={icons.forward} size={18} color={colors.textMuted} />
         </TouchableOpacity>
 
-        {/* Quick Access */}
         <Section title="QUICK ACCESS">
           <Row icon={icons.mic} label="Voicemail" color="#8B5CF6" onPress={() => router.push('/(tabs)/voicemail')} />
           <Row icon={icons.people} label="Contacts" color="#10B981" onPress={() => router.push('/(tabs)/contacts')} />
           <Row icon={icons.recording} label="Recordings" color="#F59E0B" onPress={() => router.push('/(tabs)/recordings')} />
         </Section>
 
-        {/* Phone System */}
         <Section title="PHONE SYSTEM">
           <Row icon={icons.phonePortrait} label="Phone Numbers" color="#3B82F6" onPress={() => router.push('/settings/numbers')} />
           <Row icon={icons.dialpad} label="IVR Flows" color="#8B5CF6" onPress={() => router.push('/settings/ivr')} />
@@ -78,7 +75,6 @@ export default function MoreScreen() {
           <Row icon={icons.clock} label="Business Hours" color="#6366F1" onPress={() => router.push('/settings/business-hours')} />
         </Section>
 
-        {/* AI & Automation */}
         <Section title="AI & AUTOMATION">
           <Row icon={icons.mic} label="AI Receptionist" color="#EC4899" onPress={() => router.push('/settings/ai-agent')} />
           <Row icon={icons.document} label="Knowledge Base" color="#8B5CF6" onPress={() => router.push('/settings/knowledge-base')} />
@@ -86,21 +82,25 @@ export default function MoreScreen() {
           <Row icon={icons.clock} label="Scheduler" color="#F59E0B" onPress={() => router.push('/settings/scheduler')} />
         </Section>
 
-        {/* Billing */}
+        <Section title="REVENUE">
+          <Row icon={icons.chat} label="SMS Campaigns" color="#3B82F6" onPress={() => router.push('/settings/campaigns')} />
+          <Row icon={icons.calendar} label="Appointments" color="#10B981" onPress={() => router.push('/settings/appointments')} />
+          <Row icon={icons.star} label="Review Requests" color="#F59E0B" onPress={() => router.push('/settings/reviews')} />
+          <Row icon={icons.call} label="Payment Collection" color="#EF4444" onPress={() => router.push('/settings/payments')} />
+        </Section>
+
+        <Section title="TEAM & TRAINING">
+          <Row icon={icons.people} label="Team Members" color="#3B82F6" onPress={() => router.push('/settings/team')} />
+          <Row icon={icons.chat} label="Team Chat" color="#10B981" onPress={() => router.push('/settings/team-chat')} />
+          <Row icon={icons.document} label="QA Scorecards" color="#8B5CF6" onPress={() => router.push('/settings/qa')} />
+          <Row icon={icons.mic} label="Call Simulator" color="#EC4899" onPress={() => router.push('/settings/simulator')} />
+        </Section>
+
         <Section title="BILLING">
           <Row icon={icons.star} label="Subscription & Plans" color="#F59E0B" onPress={() => router.push('/settings/billing')} />
           <Row icon={icons.add} label="Add-ons" color="#3B82F6" onPress={() => router.push('/settings/addons')} />
         </Section>
 
-        {/* Team (Admin only) */}
-        {isAdmin && (
-          <Section title="TEAM">
-            <Row icon={icons.people} label="Team Members" color="#3B82F6" onPress={() => router.push('/settings/team')} />
-            <Row icon={icons.shield} label="Roles & Permissions" color="#6366F1" />
-          </Section>
-        )}
-
-        {/* Security */}
         <Section title="SECURITY">
           <Row icon={icons.lock} label="Privacy & Security" color="#EF4444" />
           <Row icon={icons.notifications} label="Notifications" color="#F59E0B" />
@@ -108,32 +108,18 @@ export default function MoreScreen() {
           <Row icon={icons.time} label="Audit Log" color="#6366F1" onPress={() => router.push('/settings/audit-log')} />
         </Section>
 
-        {/* Appearance */}
         <Section title="APPEARANCE">
-          <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => setThemeMode('light')}>
-            <View style={[styles.rowIcon, { backgroundColor: '#F59E0B15' }]}>
-              <Icon name={icons.sun} size={20} color="#F59E0B" />
-            </View>
-            <Text style={[styles.rowLabel, { color: colors.text }]}>Light</Text>
-            {themeMode === 'light' && <Icon name={icons.check} size={20} color={colors.primary} />}
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => setThemeMode('dark')}>
-            <View style={[styles.rowIcon, { backgroundColor: '#6366F115' }]}>
-              <Icon name={icons.moon} size={20} color="#6366F1" />
-            </View>
-            <Text style={[styles.rowLabel, { color: colors.text }]}>Dark</Text>
-            {themeMode === 'dark' && <Icon name={icons.check} size={20} color={colors.primary} />}
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => setThemeMode('system')}>
-            <View style={[styles.rowIcon, { backgroundColor: '#3B82F615' }]}>
-              <Icon name={icons.phonePortrait} size={20} color="#3B82F6" />
-            </View>
-            <Text style={[styles.rowLabel, { color: colors.text }]}>System</Text>
-            {themeMode === 'system' && <Icon name={icons.check} size={20} color={colors.primary} />}
-          </TouchableOpacity>
+          {(['light', 'dark', 'system'] as const).map(mode => (
+            <TouchableOpacity key={mode} style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => setThemeMode(mode)}>
+              <View style={[styles.rowIcon, { backgroundColor: mode === 'light' ? '#F59E0B15' : mode === 'dark' ? '#6366F115' : '#3B82F615' }]}>
+                <Icon name={mode === 'light' ? icons.sun : mode === 'dark' ? icons.moon : icons.phonePortrait} size={20} color={mode === 'light' ? '#F59E0B' : mode === 'dark' ? '#6366F1' : '#3B82F6'} />
+              </View>
+              <Text style={[styles.rowLabel, { color: colors.text }]}>{mode.charAt(0).toUpperCase() + mode.slice(1)}</Text>
+              {themeMode === mode && <Icon name={icons.check} size={20} color={colors.primary} />}
+            </TouchableOpacity>
+          ))}
         </Section>
 
-        {/* Sign Out */}
         <TouchableOpacity style={[styles.signOutBtn, { backgroundColor: colors.error + '15' }]} onPress={handleSignOut}>
           <Icon name={icons.logOut} size={20} color={colors.error} />
           <Text style={[styles.signOutText, { color: colors.error }]}>Sign Out</Text>
