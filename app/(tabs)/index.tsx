@@ -105,6 +105,10 @@ export default function HomeScreen() {
             <Icon name={icons.call} size={28} color={colors.primary} />
             <ThemedText variant="body" weight="600" align="center">Make Call</ThemedText>
           </ThemedCard>
+          <ThemedCard variant="elevated" padding="md" onPress={() => router.push('/ai-voice')} style={styles.actionCard}>
+            <Icon name={icons.mic} size={28} color={colors.primary} />
+            <ThemedText variant="body" weight="600" align="center">AI Voice</ThemedText>
+          </ThemedCard>
           <ThemedCard variant="elevated" padding="md" onPress={() => router.push('/(tabs)/messages')} style={styles.actionCard}>
             <Icon name={icons.chat} size={28} color={colors.primary} />
             <ThemedText variant="body" weight="600" align="center">Messages</ThemedText>
@@ -112,10 +116,6 @@ export default function HomeScreen() {
           <ThemedCard variant="elevated" padding="md" onPress={() => router.push('/(tabs)/contacts')} style={styles.actionCard}>
             <Icon name={icons.people} size={28} color={colors.primary} />
             <ThemedText variant="body" weight="600" align="center">Contacts</ThemedText>
-          </ThemedCard>
-          <ThemedCard variant="elevated" padding="md" onPress={() => router.push('/(tabs)/settings')} style={styles.actionCard}>
-            <Icon name={icons.settings} size={28} color={colors.primary} />
-            <ThemedText variant="body" weight="600" align="center">Settings</ThemedText>
           </ThemedCard>
         </View>
 
