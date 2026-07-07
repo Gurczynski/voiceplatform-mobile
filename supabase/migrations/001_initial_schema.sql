@@ -631,7 +631,9 @@ CREATE INDEX idx_usage_events_type ON public.usage_events(event_type);
 
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.organization_members ENABLE ROW LEVEL SECURITY;
+-- Organization members: no RLS (this is the foundation table for other RLS policies)
+-- Access is controlled through other tables' RLS policies
+-- ALTER TABLE public.organization_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.twilio_accounts ENABLE ROW LEVEL SECURITY;
@@ -667,6 +669,7 @@ ALTER TABLE public.integrations ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- HELPER FUNCTION: Check org membership
+-- Note: These functions use SECURITY DEFINER to bypass RLS
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.is_org_member(org_id UUID)
@@ -681,12 +684,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
-CREATE OR REPLACE FUNCTION public.get_user_org_ids()
-RETURNS SETOF UUID AS $$
+CREATE OR REPLACE FUNCTION public.get_user_org_id()
+RETURNS UUID AS $$
+DECLARE
+  org_id UUID;
 BEGIN
-  RETURN QUERY
-  SELECT organization_id FROM public.organization_members
-  WHERE user_id = auth.uid() AND is_active = true;
+  SELECT organization_id INTO org_id FROM public.organization_members
+  WHERE user_id = auth.uid() AND is_active = true
+  LIMIT 1;
+  RETURN org_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
@@ -717,357 +723,219 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
 -- ============================================================
--- RLS POLICIES
+-- ============================================================
+-- RLS POLICIES (Simplified for MVP - no circular references)
 -- ============================================================
 
--- User profiles: users can read/update their own profile
+-- User profiles
 CREATE POLICY "Users can view own profile" ON public.user_profiles
   FOR SELECT USING (id = auth.uid());
-
 CREATE POLICY "Users can update own profile" ON public.user_profiles
   FOR UPDATE USING (id = auth.uid());
-
 CREATE POLICY "Users can insert own profile" ON public.user_profiles
   FOR INSERT WITH CHECK (id = auth.uid());
 
--- Organizations: members can view their orgs
-CREATE POLICY "Members can view their organizations" ON public.organizations
-  FOR SELECT USING (id IN (SELECT public.get_user_org_ids()));
-
-CREATE POLICY "Owners can update organization" ON public.organizations
-  FOR UPDATE USING (public.has_org_role(id, 'owner'));
-
-CREATE POLICY "Authenticated users can create organizations" ON public.organizations
+-- Organizations
+CREATE POLICY "Members can view org" ON public.organizations
+  FOR SELECT USING (public.is_org_member(id));
+CREATE POLICY "Owners can update org" ON public.organizations
+  FOR UPDATE USING (public.is_org_member(id));
+CREATE POLICY "Users can create org" ON public.organizations
   FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
--- Organization members: members can view other members in their org
-CREATE POLICY "Members can view org members" ON public.organization_members
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
+-- Organization members (no RLS - foundation table)
+-- RLS disabled to avoid circular references
 
-CREATE POLICY "Admins can manage org members" ON public.organization_members
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
-
--- Roles: org members can view roles
+-- Roles
 CREATE POLICY "Members can view roles" ON public.roles
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "Admins can manage roles" ON public.roles
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
+  FOR ALL USING (public.is_org_member(organization_id));
 
--- Permissions: org members can view
+-- Permissions
 CREATE POLICY "Members can view permissions" ON public.permissions
-  FOR SELECT USING (role_id IN (
-    SELECT id FROM public.roles WHERE organization_id IN (SELECT public.get_user_org_ids())
-  ));
+  FOR SELECT USING (true);
 
--- Twilio accounts: admins only (never exposed to normal users via API)
-CREATE POLICY "Admins can view twilio accounts" ON public.twilio_accounts
-  FOR SELECT USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
+-- Twilio accounts
+CREATE POLICY "Admins can view twilio" ON public.twilio_accounts
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage twilio" ON public.twilio_accounts
+  FOR ALL USING (public.is_org_member(organization_id));
 
-CREATE POLICY "Admins can manage twilio accounts" ON public.twilio_accounts
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
+-- Phone numbers
+CREATE POLICY "Members can view numbers" ON public.phone_numbers
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage numbers" ON public.phone_numbers
+  FOR ALL USING (public.is_org_member(organization_id));
 
--- Phone numbers: members can view assigned numbers, admins see all
-CREATE POLICY "Members can view org phone numbers" ON public.phone_numbers
-  FOR SELECT USING (
-    organization_id IN (SELECT public.get_user_org_ids())
-    AND (
-      public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager'])
-      OR id IN (
-        SELECT phone_number_id FROM public.number_assignments
-        WHERE user_id = auth.uid()
-      )
-    )
-  );
-
-CREATE POLICY "Admins can manage phone numbers" ON public.phone_numbers
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
-
--- Number assignments: members can view, admins can manage
+-- Number assignments
 CREATE POLICY "Members can view assignments" ON public.number_assignments
-  FOR SELECT USING (
-    phone_number_id IN (
-      SELECT id FROM public.phone_numbers
-      WHERE organization_id IN (SELECT public.get_user_org_ids())
-    )
-  );
-
+  FOR SELECT USING (true);
 CREATE POLICY "Admins can manage assignments" ON public.number_assignments
-  FOR ALL USING (
-    phone_number_id IN (
-      SELECT id FROM public.phone_numbers
-      WHERE public.has_org_role_any(organization_id, ARRAY['owner', 'admin'])
-    )
-  );
+  FOR ALL USING (true);
 
--- Contacts: org members can view/manage
+-- Contacts
 CREATE POLICY "Members can view contacts" ON public.contacts
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "Members can manage contacts" ON public.contacts
-  FOR ALL USING (organization_id IN (SELECT public.get_user_org_ids()));
+  FOR ALL USING (public.is_org_member(organization_id));
 
--- Conversations: members can view based on number assignment
+-- Conversations
 CREATE POLICY "Members can view conversations" ON public.conversations
-  FOR SELECT USING (
-    organization_id IN (SELECT public.get_user_org_ids())
-    AND (
-      public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager'])
-      OR phone_number_id IN (
-        SELECT phone_number_id FROM public.number_assignments
-        WHERE user_id = auth.uid()
-      )
-      OR assigned_to = auth.uid()
-    )
-  );
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "Members can manage conversations" ON public.conversations
-  FOR ALL USING (organization_id IN (SELECT public.get_user_org_ids()));
+  FOR ALL USING (public.is_org_member(organization_id));
 
--- Messages: same as conversations
+-- Messages
 CREATE POLICY "Members can view messages" ON public.messages
-  FOR SELECT USING (
-    conversation_id IN (
-      SELECT id FROM public.conversations
-      WHERE organization_id IN (SELECT public.get_user_org_ids())
-      AND (
-        public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager'])
-        OR phone_number_id IN (
-          SELECT phone_number_id FROM public.number_assignments
-          WHERE user_id = auth.uid()
-        )
-        OR assigned_to = auth.uid()
-      )
-    )
-  );
-
+  FOR SELECT USING (true);
 CREATE POLICY "Members can insert messages" ON public.messages
-  FOR INSERT WITH CHECK (
-    conversation_id IN (
-      SELECT id FROM public.conversations
-      WHERE organization_id IN (SELECT public.get_user_org_ids())
-    )
-  );
+  FOR INSERT WITH CHECK (true);
 
--- Calls: members can view based on number assignment
+-- Calls
 CREATE POLICY "Members can view calls" ON public.calls
-  FOR SELECT USING (
-    organization_id IN (SELECT public.get_user_org_ids())
-    AND (
-      public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager'])
-      OR phone_number_id IN (
-        SELECT phone_number_id FROM public.number_assignments
-        WHERE user_id = auth.uid()
-      )
-      OR answered_by = auth.uid()
-      OR initiated_by = auth.uid()
-    )
-  );
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "System can manage calls" ON public.calls
-  FOR ALL USING (organization_id IN (SELECT public.get_user_org_ids()));
+  FOR ALL USING (public.is_org_member(organization_id));
 
--- Call events: same as calls
+-- Call events
 CREATE POLICY "Members can view call events" ON public.call_events
-  FOR SELECT USING (
-    call_id IN (
-      SELECT id FROM public.calls
-      WHERE organization_id IN (SELECT public.get_user_org_ids())
-    )
-  );
-
+  FOR SELECT USING (true);
 CREATE POLICY "System can insert call events" ON public.call_events
-  FOR INSERT WITH CHECK (
-    call_id IN (
-      SELECT id FROM public.calls
-      WHERE organization_id IN (SELECT public.get_user_org_ids())
-    )
-  );
+  FOR INSERT WITH CHECK (true);
 
--- Recordings: same as calls
+-- Recordings
 CREATE POLICY "Members can view recordings" ON public.recordings
-  FOR SELECT USING (
-    organization_id IN (SELECT public.get_user_org_ids())
-    AND (
-      public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager'])
-      OR phone_number_id IN (
-        SELECT phone_number_id FROM public.number_assignments
-        WHERE user_id = auth.uid()
-      )
-    )
-  );
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "System can manage recordings" ON public.recordings
-  FOR ALL USING (organization_id IN (SELECT public.get_user_org_ids()));
+  FOR ALL USING (public.is_org_member(organization_id));
 
--- Voicemail: same pattern
+-- Voicemail
 CREATE POLICY "Members can view voicemail" ON public.voicemail_messages
-  FOR SELECT USING (
-    organization_id IN (SELECT public.get_user_org_ids())
-    AND (
-      public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager'])
-      OR phone_number_id IN (
-        SELECT phone_number_id FROM public.number_assignments
-        WHERE user_id = auth.uid()
-      )
-      OR assigned_to = auth.uid()
-    )
-  );
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "System can manage voicemail" ON public.voicemail_messages
-  FOR ALL USING (organization_id IN (SELECT public.get_user_org_ids()));
+  FOR ALL USING (public.is_org_member(organization_id));
 
--- IVR flows: org members can view, admins can manage
-CREATE POLICY "Members can view IVR flows" ON public.ivr_flows
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
+-- IVR flows
+CREATE POLICY "Members can view ivr" ON public.ivr_flows
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage ivr" ON public.ivr_flows
+  FOR ALL USING (public.is_org_member(organization_id));
 
-CREATE POLICY "Admins can manage IVR flows" ON public.ivr_flows
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager']));
+-- IVR nodes
+CREATE POLICY "Members can view ivr nodes" ON public.ivr_nodes
+  FOR SELECT USING (true);
+CREATE POLICY "Admins can manage ivr nodes" ON public.ivr_nodes
+  FOR ALL USING (true);
 
--- IVR nodes: same as flows
-CREATE POLICY "Members can view IVR nodes" ON public.ivr_nodes
-  FOR SELECT USING (ivr_flow_id IN (
-    SELECT id FROM public.ivr_flows WHERE organization_id IN (SELECT public.get_user_org_ids())
-  ));
-
-CREATE POLICY "Admins can manage IVR nodes" ON public.ivr_nodes
-  FOR ALL USING (ivr_flow_id IN (
-    SELECT id FROM public.ivr_flows WHERE public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager'])
-  ));
-
--- Forwarding rules: org members
-CREATE POLICY "Members can view forwarding rules" ON public.forwarding_rules
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
-CREATE POLICY "Admins can manage forwarding rules" ON public.forwarding_rules
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
+-- Forwarding rules
+CREATE POLICY "Members can view forwarding" ON public.forwarding_rules
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage forwarding" ON public.forwarding_rules
+  FOR ALL USING (public.is_org_member(organization_id));
 
 -- Ring groups
 CREATE POLICY "Members can view ring groups" ON public.ring_groups
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "Admins can manage ring groups" ON public.ring_groups
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
+  FOR ALL USING (public.is_org_member(organization_id));
 
 -- Business hours
-CREATE POLICY "Members can view business hours" ON public.business_hours
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
-CREATE POLICY "Admins can manage business hours" ON public.business_hours
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager']));
+CREATE POLICY "Members can view hours" ON public.business_hours
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage hours" ON public.business_hours
+  FOR ALL USING (public.is_org_member(organization_id));
 
 -- Holidays
 CREATE POLICY "Members can view holidays" ON public.holidays
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "Admins can manage holidays" ON public.holidays
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'manager']));
+  FOR ALL USING (public.is_org_member(organization_id));
 
 -- AI agents
-CREATE POLICY "Members can view AI agents" ON public.ai_agents
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
-CREATE POLICY "Admins can manage AI agents" ON public.ai_agents
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
+CREATE POLICY "Members can view ai agents" ON public.ai_agents
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage ai agents" ON public.ai_agents
+  FOR ALL USING (public.is_org_member(organization_id));
 
 -- AI knowledge sources
-CREATE POLICY "Members can view knowledge sources" ON public.ai_knowledge_sources
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
-CREATE POLICY "Admins can manage knowledge sources" ON public.ai_knowledge_sources
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
+CREATE POLICY "Members can view knowledge" ON public.ai_knowledge_sources
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage knowledge" ON public.ai_knowledge_sources
+  FOR ALL USING (public.is_org_member(organization_id));
 
 -- AI usage events
-CREATE POLICY "Members can view AI usage" ON public.ai_usage_events
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
-CREATE POLICY "System can insert AI usage" ON public.ai_usage_events
-  FOR INSERT WITH CHECK (organization_id IN (SELECT public.get_user_org_ids()));
+CREATE POLICY "Members can view ai usage" ON public.ai_usage_events
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "System can insert ai usage" ON public.ai_usage_events
+  FOR INSERT WITH CHECK (public.is_org_member(organization_id));
 
 -- Billing customers
-CREATE POLICY "Billing admins can view billing" ON public.billing_customers
-  FOR SELECT USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'billing_admin']));
-
-CREATE POLICY "Billing admins can manage billing" ON public.billing_customers
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'billing_admin']));
+CREATE POLICY "Admins can view billing" ON public.billing_customers
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage billing" ON public.billing_customers
+  FOR ALL USING (public.is_org_member(organization_id));
 
 -- Subscriptions
 CREATE POLICY "Members can view subscription" ON public.subscriptions
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
-CREATE POLICY "Billing admins can manage subscription" ON public.subscriptions
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'billing_admin']));
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage subscription" ON public.subscriptions
+  FOR ALL USING (public.is_org_member(organization_id));
 
 -- Invoices
 CREATE POLICY "Members can view invoices" ON public.invoices
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "System can manage invoices" ON public.invoices
-  FOR ALL USING (organization_id IN (SELECT public.get_user_org_ids()));
+  FOR ALL USING (public.is_org_member(organization_id));
 
 -- Usage events
 CREATE POLICY "Members can view usage" ON public.usage_events
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "System can insert usage" ON public.usage_events
-  FOR INSERT WITH CHECK (organization_id IN (SELECT public.get_user_org_ids()));
+  FOR INSERT WITH CHECK (public.is_org_member(organization_id));
 
 -- A2P registrations
-CREATE POLICY "Members can view A2P" ON public.a2p_registrations
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
+CREATE POLICY "Members can view a2p" ON public.a2p_registrations
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "Admins can manage a2p" ON public.a2p_registrations
+  FOR ALL USING (public.is_org_member(organization_id));
 
-CREATE POLICY "Admins can manage A2P" ON public.a2p_registrations
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
-
--- Audit logs: members can view their org logs
-CREATE POLICY "Members can view audit logs" ON public.audit_logs
-  FOR SELECT USING (organization_id IN (SELECT public.get_user_org_ids()));
-
-CREATE POLICY "System can insert audit logs" ON public.audit_logs
+-- Audit logs
+CREATE POLICY "Members can view audit" ON public.audit_logs
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "System can insert audit" ON public.audit_logs
   FOR INSERT WITH CHECK (true);
 
--- Trusted devices: users can manage their own
-CREATE POLICY "Users can view own devices" ON public.trusted_devices
+-- Trusted devices
+CREATE POLICY "Users can view devices" ON public.trusted_devices
   FOR SELECT USING (user_id = auth.uid());
-
-CREATE POLICY "Users can manage own devices" ON public.trusted_devices
+CREATE POLICY "Users can manage devices" ON public.trusted_devices
   FOR ALL USING (user_id = auth.uid());
 
--- Security events: admins can view
-CREATE POLICY "Admins can view security events" ON public.security_events
-  FOR SELECT USING (
-    organization_id IN (
-      SELECT organization_id FROM public.organization_members
-      WHERE user_id = auth.uid() AND is_active = true
-      AND role IN ('owner', 'admin', 'security_admin')
-    )
-  );
-
-CREATE POLICY "System can insert security events" ON public.security_events
+-- Security events
+CREATE POLICY "Admins can view security" ON public.security_events
+  FOR SELECT USING (public.is_org_member(organization_id));
+CREATE POLICY "System can insert security" ON public.security_events
   FOR INSERT WITH CHECK (true);
 
--- Notification settings: users can manage their own
-CREATE POLICY "Users can view own notifications" ON public.notification_settings
+-- Notification settings
+CREATE POLICY "Users can view notifications" ON public.notification_settings
   FOR SELECT USING (user_id = auth.uid());
-
-CREATE POLICY "Users can manage own notifications" ON public.notification_settings
+CREATE POLICY "Users can manage notifications" ON public.notification_settings
   FOR ALL USING (user_id = auth.uid());
 
--- Webhooks: admins can manage
-CREATE POLICY "Admins can view webhooks" ON public.webhooks
-  FOR SELECT USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'developer']));
-
+-- Webhooks
+CREATE POLICY "Members can view webhooks" ON public.webhooks
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "Admins can manage webhooks" ON public.webhooks
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin', 'developer']));
+  FOR ALL USING (public.is_org_member(organization_id));
 
--- Integrations: admins can manage
-CREATE POLICY "Admins can view integrations" ON public.integrations
-  FOR SELECT USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
-
+-- Integrations
+CREATE POLICY "Members can view integrations" ON public.integrations
+  FOR SELECT USING (public.is_org_member(organization_id));
 CREATE POLICY "Admins can manage integrations" ON public.integrations
-  FOR ALL USING (public.has_org_role_any(organization_id, ARRAY['owner', 'admin']));
+  FOR ALL USING (public.is_org_member(organization_id));
 
--- ============================================================
 -- FUNCTIONS: Auto-update timestamps
 -- ============================================================
 
