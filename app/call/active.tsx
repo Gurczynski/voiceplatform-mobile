@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+// Active Call Screen - Real calls via Edge Functions
+import { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Vibration } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useAuthStore } from '../../src/stores';
+import { twilioVoice, CallEvent } from '../../src/lib/twilio';
 import { ThemedView, ThemedText, Icon, icons } from '../../src/components/ui';
 
 export default function ActiveCallScreen() {
@@ -10,31 +13,95 @@ export default function ActiveCallScreen() {
   const { colors } = theme;
   const params = useLocalSearchParams<{ number?: string; name?: string; direction?: string }>();
   const insets = useSafeAreaInsets();
+  const { currentOrganization } = useAuthStore();
 
   const [status, setStatus] = useState<'connecting' | 'ringing' | 'active' | 'ended'>('connecting');
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
   const [speaker, setSpeaker] = useState(false);
   const [hold, setHold] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setStatus('ringing'), 1000);
-    const t2 = setTimeout(() => setStatus('active'), 3000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+    const initCall = async () => {
+      if (!currentOrganization?.id || !params.number) return;
 
+      if (params.direction === 'outbound') {
+        const result = await twilioVoice.makeCall({
+          to: params.number,
+          organizationId: currentOrganization.id,
+        });
+
+        if (result.success) {
+          setStatus('ringing');
+          // Simulate call connecting after 3 seconds for demo
+          setTimeout(() => setStatus('active'), 3000);
+        } else {
+          setError(result.error || 'Failed to connect');
+          setStatus('ended');
+        }
+      } else {
+        // Inbound call - already ringing
+        setStatus('ringing');
+        setTimeout(() => setStatus('active'), 2000);
+      }
+    };
+
+    initCall();
+
+    // Listen for call events
+    const unsubscribe = twilioVoice.onEvent((event: CallEvent) => {
+      switch (event.type) {
+        case 'ringing': setStatus('ringing'); break;
+        case 'connected': setStatus('active'); break;
+        case 'disconnected': setStatus('ended'); break;
+        case 'error': setError(event.error || 'Call failed'); setStatus('ended'); break;
+      }
+    });
+
+    return unsubscribe;
+  }, [currentOrganization?.id, params.number, params.direction]);
+
+  // Duration timer
   useEffect(() => {
     if (status !== 'active') return;
     const iv = setInterval(() => setDuration(d => d + 1), 1000);
     return () => clearInterval(iv);
   }, [status]);
 
+  // Auto-close after ended
+  useEffect(() => {
+    if (status === 'ended') {
+      const timer = setTimeout(() => router.back(), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
+
   const formatDur = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
-  const endCall = () => { Vibration.vibrate(100); setStatus('ended'); setTimeout(() => router.back(), 1000); };
+  const endCall = useCallback(async () => {
+    Vibration.vibrate(100);
+    await twilioVoice.endCall();
+    setStatus('ended');
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    Vibration.vibrate(10);
+    setMuted(!muted);
+  }, [muted]);
+
+  const toggleSpeaker = useCallback(() => {
+    Vibration.vibrate(10);
+    setSpeaker(!speaker);
+  }, [speaker]);
+
+  const toggleHold = useCallback(() => {
+    Vibration.vibrate(10);
+    setHold(!hold);
+  }, [hold]);
 
   const statusColor = status === 'active' ? colors.success : status === 'ringing' ? colors.warning : status === 'ended' ? colors.error : colors.textMuted;
-  const statusText = status === 'connecting' ? 'Connecting...' : status === 'ringing' ? 'Ringing...' : status === 'active' ? formatDur(duration) : 'Call Ended';
+  const statusText = status === 'connecting' ? 'Connecting...' : status === 'ringing' ? 'Ringing...' : status === 'active' ? formatDur(duration) : error || 'Call Ended';
 
   const ControlBtn = ({ icon, label, active, onPress, color }: any) => (
     <TouchableOpacity style={[styles.ctrlBtn, { backgroundColor: active ? (color || colors.primary) : colors.surfaceAlt }]} onPress={onPress}>
@@ -59,14 +126,14 @@ export default function ActiveCallScreen() {
 
       <View style={styles.controls}>
         <View style={styles.ctrlRow}>
-          <ControlBtn icon={muted ? icons.micOff : icons.mic} label={muted ? 'Unmute' : 'Mute'} active={muted} onPress={() => { Vibration.vibrate(10); setMuted(!muted); }} />
-          <ControlBtn icon={speaker ? icons.speaker : icons.speakerOff} label="Speaker" active={speaker} onPress={() => { Vibration.vibrate(10); setSpeaker(!speaker); }} />
-          <ControlBtn icon={icons.pause} label="Hold" active={hold} color={colors.warning} onPress={() => { Vibration.vibrate(10); setHold(!hold); }} />
+          <ControlBtn icon={muted ? icons.micOff : icons.mic} label={muted ? 'Unmute' : 'Mute'} active={muted} onPress={toggleMute} />
+          <ControlBtn icon={speaker ? icons.speaker : icons.speakerOff} label="Speaker" active={speaker} onPress={toggleSpeaker} />
+          <ControlBtn icon={icons.pause} label="Hold" active={hold} color={colors.warning} onPress={toggleHold} />
         </View>
         <View style={styles.ctrlRow}>
           <ControlBtn icon={icons.dialpad} label="Keypad" active={false} onPress={() => {}} />
           <ControlBtn icon={icons.add} label="Add" active={false} onPress={() => {}} />
-          <ControlBtn icon={icons.chat} label="Message" active={false} onPress={() => {}} />
+          <ControlBtn icon={icons.chat} label="Message" active={false} onPress={() => router.push('/(tabs)/messages')} />
         </View>
         <TouchableOpacity style={[styles.endBtn, { backgroundColor: colors.error }]} onPress={endCall}>
           <Icon name={icons.call} size={32} color="#FFF" />

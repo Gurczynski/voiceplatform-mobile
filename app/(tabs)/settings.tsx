@@ -88,6 +88,7 @@ export default function MoreScreen() {
         {/* Billing */}
         <Section title="BILLING">
           <Row icon={icons.star} label="Subscription & Plans" color="#F59E0B" onPress={() => router.push('/(tabs)/settings/billing')} />
+          <Row icon={icons.add} label="Add-ons" color="#3B82F6" onPress={() => router.push('/(tabs)/settings/addons')} />
         </Section>
 
         {/* Team (Admin only) */}

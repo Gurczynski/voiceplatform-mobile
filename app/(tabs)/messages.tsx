@@ -9,7 +9,7 @@ export default function MessagesScreen() {
   const { theme } = useThemeContext();
   const { colors, borderRadius } = theme;
   const { currentOrganization } = useAuthStore();
-  const { conversations, loadConversations, isLoadingConversations, subscribeToMessages } = useAppStore();
+  const { conversations, loadConversations, isLoadingConversations, subscribeToRealtime } = useAppStore();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
@@ -17,7 +17,7 @@ export default function MessagesScreen() {
   useEffect(() => {
     if (currentOrganization?.id) {
       loadConversations(currentOrganization.id);
-      const unsub = subscribeToMessages(currentOrganization.id);
+      const unsub = subscribeToRealtime(currentOrganization.id);
       return unsub;
     }
   }, [currentOrganization?.id]);

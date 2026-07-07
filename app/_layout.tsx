@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useThemeContext } from '../src/theme/ThemeProvider';
 import { useAuthStore } from '../src/stores';
+import { registerForPushNotifications, setupNotificationListeners } from '../src/lib/notifications';
 
 function RootLayoutNav() {
   const { theme } = useThemeContext();
@@ -12,7 +13,24 @@ function RootLayoutNav() {
   const loadSession = useAuthStore((s) => s.loadSession);
 
   useEffect(() => {
-    loadSession().finally(() => setReady(true));
+    const init = async () => {
+      await loadSession();
+
+      // Register for push notifications
+      const token = await registerForPushNotifications();
+      if (token) {
+        console.log('Push token registered:', token);
+      }
+
+      // Set up notification listeners
+      const cleanup = setupNotificationListeners();
+
+      setReady(true);
+
+      return cleanup;
+    };
+
+    init();
   }, []);
 
   if (!ready) {
