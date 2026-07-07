@@ -121,6 +121,29 @@ BEGIN
   INSERT INTO public.ai_agents (organization_id, name, description, personality, greeting, fallback_message, business_name, tone, is_active)
   VALUES (org_id, 'Alex - AI Receptionist', 'Professional AI receptionist for Test Business', 'professional', 'Thank you for calling Test Business! I''m Alex, your AI assistant. How can I help you today?', 'I''m sorry, I couldn''t understand that. Let me transfer you to a human agent.', 'Test Business', 'professional', true);
 
+  -- Insert IVR flows
+  INSERT INTO public.ivr_flows (organization_id, name, status, version, is_default, flow_data)
+  VALUES (org_id, 'Main Menu', 'draft', 1, false, '{"nodes": [
+    {"id": "1", "type": "incoming_call", "label": "Incoming Call", "config": {}, "position_x": 50, "position_y": 50},
+    {"id": "2", "type": "play_greeting", "label": "Welcome Message", "config": {"text": "Thank you for calling. Press 1 for sales, 2 for support."}, "position_x": 50, "position_y": 130},
+    {"id": "3", "type": "gather_input", "label": "Get Input", "config": {"maxDigits": 1}, "position_x": 50, "position_y": 210},
+    {"id": "4", "type": "route_user", "label": "Sales Team", "config": {}, "position_x": 50, "position_y": 290},
+    {"id": "5", "type": "voicemail", "label": "Voicemail", "config": {}, "position_x": 50, "position_y": 370}
+  ], "edges": []}');
+
+  INSERT INTO public.ivr_flows (organization_id, name, status, version, is_default, flow_data)
+  VALUES (org_id, 'After Hours', 'published', 1, false, '{"nodes": [
+    {"id": "1", "type": "incoming_call", "label": "Incoming Call", "config": {}, "position_x": 50, "position_y": 50},
+    {"id": "2", "type": "play_greeting", "label": "After Hours Message", "config": {"text": "We are currently closed. Please leave a message."}, "position_x": 50, "position_y": 130},
+    {"id": "3", "type": "voicemail", "label": "Voicemail", "config": {}, "position_x": 50, "position_y": 210}
+  ], "edges": []}');
+
+  INSERT INTO public.ivr_flows (organization_id, name, status, version, is_default, flow_data)
+  VALUES (org_id, 'AI Receptionist', 'draft', 1, false, '{"nodes": [
+    {"id": "1", "type": "incoming_call", "label": "Incoming Call", "config": {}, "position_x": 50, "position_y": 50},
+    {"id": "2", "type": "ai_receptionist", "label": "AI Agent", "config": {}, "position_x": 50, "position_y": 130}
+  ], "edges": []}');
+
   -- Insert audit log
   INSERT INTO public.audit_logs (organization_id, action, resource_type, resource_id, details)
   VALUES
