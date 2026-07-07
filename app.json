@@ -1,25 +1,40 @@
 {
   "expo": {
-    "name": "voiceplatform-mobile",
-    "slug": "voiceplatform-mobile",
+    "name": "VoicePlatform",
+    "slug": "voiceplatform",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "scheme": "voiceplatform",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.voiceplatform.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["voip", "fetch", "remote-notification"],
+        "NSMicrophoneUsageDescription": "Microphone access is required for making and receiving calls.",
+        "NSCameraUsageDescription": "Camera access is required for video features.",
+        "NSPhotoLibraryUsageDescription": "Photo library access is required for sending media messages."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
       },
-      "predictiveBackGestureEnabled": false
+      "package": "com.voiceplatform.app"
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications",
+      "expo-local-authentication",
+      "expo-av"
+    ]
   }
 }
