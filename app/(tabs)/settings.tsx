@@ -73,16 +73,17 @@ export default function SettingsScreen() {
         <ThemedText variant="label" style={styles.sectionLabel}>Phone System</ThemedText>
         <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
           <SettingRow icon={icons.phonePortrait} label="Phone Numbers" onPress={() => router.push('/(tabs)/settings/numbers')} />
-          <SettingRow icon={icons.dialpad} label="IVR Flows" />
-          <SettingRow icon={icons.call} label="Ring Groups" />
-          <SettingRow icon={icons.clock} label="Business Hours" />
+          <SettingRow icon={icons.dialpad} label="IVR Flows" onPress={() => router.push('/(tabs)/settings/ivr')} />
+          <SettingRow icon={icons.call} label="Ring Groups" onPress={() => router.push('/(tabs)/settings/ring-groups')} />
+          <SettingRow icon={icons.clock} label="Business Hours" onPress={() => router.push('/(tabs)/settings/business-hours')} />
+          <SettingRow icon={icons.forward} label="Forwarding Rules" onPress={() => router.push('/(tabs)/settings/forwarding')} />
         </View>
 
         <ThemedText variant="label" style={styles.sectionLabel}>AI & Automation</ThemedText>
         <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
-          <SettingRow icon={icons.mic} label="AI Receptionist" />
-          <SettingRow icon={icons.document} label="Knowledge Base" />
-          <SettingRow icon={icons.stats} label="Automations" />
+          <SettingRow icon={icons.mic} label="AI Receptionist" onPress={() => router.push('/(tabs)/settings/ai-agent')} />
+          <SettingRow icon={icons.document} label="Knowledge Base" onPress={() => router.push('/(tabs)/settings/knowledge-base')} />
+          <SettingRow icon={icons.stats} label="Automations" onPress={() => router.push('/(tabs)/settings/automations')} />
         </View>
 
         <ThemedText variant="label" style={styles.sectionLabel}>Billing</ThemedText>
@@ -95,7 +96,7 @@ export default function SettingsScreen() {
           <>
             <ThemedText variant="label" style={styles.sectionLabel}>Team</ThemedText>
             <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
-              <SettingRow icon={icons.people} label="Team Members" />
+              <SettingRow icon={icons.people} label="Team Members" onPress={() => router.push('/(tabs)/settings/team')} />
               <SettingRow icon={icons.shield} label="Roles & Permissions" />
             </View>
           </>
@@ -105,7 +106,8 @@ export default function SettingsScreen() {
         <View style={[styles.card, { backgroundColor: colors.surfaceAlt }]}>
           <SettingRow icon={icons.lock} label="Privacy & Security" />
           <SettingRow icon={icons.notifications} label="Notifications" />
-          <SettingRow icon={icons.time} label="Audit Log" />
+          <SettingRow icon={icons.shield} label="A2P Compliance" onPress={() => router.push('/(tabs)/settings/compliance')} />
+          <SettingRow icon={icons.time} label="Audit Log" onPress={() => router.push('/(tabs)/settings/audit-log')} />
         </View>
 
         <ThemedText variant="label" style={styles.sectionLabel}>Support</ThemedText>
