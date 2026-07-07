@@ -83,6 +83,7 @@ export default function MoreScreen() {
           <Row icon={icons.mic} label="AI Receptionist" color="#EC4899" onPress={() => router.push('/settings/ai-agent')} />
           <Row icon={icons.document} label="Knowledge Base" color="#8B5CF6" onPress={() => router.push('/settings/knowledge-base')} />
           <Row icon={icons.stats} label="Automations" color="#6366F1" onPress={() => router.push('/settings/automations')} />
+          <Row icon={icons.clock} label="Scheduler" color="#F59E0B" onPress={() => router.push('/settings/scheduler')} />
         </Section>
 
         {/* Billing */}
