@@ -1,5 +1,7 @@
+// Voicemail Tab - Real voicemails from Supabase
 import { useEffect, useState, useCallback } from 'react';
-import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
 import { useAuthStore, useAppStore } from '../../src/stores';
 import { supabase } from '../../src/lib/supabase';
@@ -10,6 +12,7 @@ export default function VoicemailScreen() {
   const { colors } = theme;
   const { currentOrganization } = useAuthStore();
   const { voicemails, loadVoicemails } = useAppStore();
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
@@ -40,6 +43,10 @@ export default function VoicemailScreen() {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
+  const callBack = (phone: string) => {
+    router.push({ pathname: '/dialpad', params: { number: phone } });
+  };
+
   const newCount = voicemails.filter(v => v.status === 'new').length;
 
   return (
@@ -59,17 +66,12 @@ export default function VoicemailScreen() {
           </View>
         ) : (
           voicemails.map(vm => (
-            <View
-              key={vm.id}
-              style={[
-                styles.vmItem,
-                { backgroundColor: colors.surfaceAlt },
-                vm.status === 'new' && { borderLeftColor: colors.primary, borderLeftWidth: 3 },
-              ]}
-            >
+            <View key={vm.id} style={[styles.vmItem, { backgroundColor: colors.surfaceAlt }, vm.status === 'new' && { borderLeftColor: colors.primary, borderLeftWidth: 3 }]}>
               <View style={styles.vmHeader}>
                 <View style={[styles.vmAvatar, { backgroundColor: colors.surface }]}>
-                  <Icon name={vm.is_urgent ? icons.alert : icons.mic} size={20} color={vm.is_urgent ? colors.error : colors.primary} />
+                  <Text style={[styles.avatarText, { color: colors.primary }]}>
+                    {(vm.contacts?.name || vm.from_number || '?')[0].toUpperCase()}
+                  </Text>
                 </View>
                 <View style={styles.vmInfo}>
                   <ThemedText variant="body" weight="600">{vm.contacts?.name || vm.from_number}</ThemedText>
@@ -101,20 +103,26 @@ export default function VoicemailScreen() {
               <View style={styles.actions}>
                 <TouchableOpacity
                   style={[styles.actionBtn, { backgroundColor: colors.surface }]}
-                  onPress={() => { setPlayingId(playingId === vm.id ? null : vm.id); if (vm.status === 'new') updateStatus(vm.id, 'listened'); }}
+                  onPress={() => {
+                    setPlayingId(playingId === vm.id ? null : vm.id);
+                    if (vm.status === 'new') updateStatus(vm.id, 'listened');
+                  }}
                 >
                   <Icon name={playingId === vm.id ? icons.pause : icons.play} size={16} color={colors.primary} />
                   <Text style={[styles.actionText, { color: colors.primary }]}>{playingId === vm.id ? 'Pause' : 'Play'}</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.surface }]} onPress={() => updateStatus(vm.id, 'resolved')}>
                   <Icon name={icons.checkCircle} size={16} color={colors.success} />
                   <Text style={[styles.actionText, { color: colors.success }]}>Resolve</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.surface }]}>
+
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.surface }]} onPress={() => router.push('/dialpad')}>
                   <Icon name={icons.call} size={16} color={colors.icon} />
                   <Text style={[styles.actionText, { color: colors.text }]}>Call</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.surface }]}>
+
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.surface }]} onPress={() => router.push('/(tabs)/messages')}>
                   <Icon name={icons.chat} size={16} color={colors.icon} />
                   <Text style={[styles.actionText, { color: colors.text }]}>Text</Text>
                 </TouchableOpacity>
@@ -134,6 +142,7 @@ const styles = StyleSheet.create({
   vmItem: { padding: 16, borderRadius: 12, marginBottom: 12 },
   vmHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   vmAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 16, fontWeight: '600' },
   vmInfo: { flex: 1, gap: 2 },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },

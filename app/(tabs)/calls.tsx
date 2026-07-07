@@ -1,3 +1,4 @@
+// Calls Tab - Real call history from Supabase
 import { useEffect, useState, useCallback } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -50,14 +51,16 @@ export default function CallsScreen() {
     return colors.textMuted;
   };
 
+  const missedCount = calls.filter(c => ['no_answer', 'busy', 'failed'].includes(c.status)).length;
+
   return (
     <ThemedView variant="default" style={styles.container}>
       <ThemedHeader
         title="Calls"
-        subtitle={`${calls.length} calls`}
+        subtitle={`${calls.length} calls${missedCount > 0 ? ` • ${missedCount} missed` : ''}`}
         rightAction={
-          <TouchableOpacity onPress={() => router.push('/dialpad')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Icon name={icons.add} size={24} color={colors.primary} />
+          <TouchableOpacity onPress={() => router.push('/dialpad')} style={[styles.addBtn, { backgroundColor: colors.primary }]}>
+            <Icon name={icons.add} size={20} color="#FFF" />
           </TouchableOpacity>
         }
       />
@@ -82,7 +85,7 @@ export default function CallsScreen() {
               style={[styles.filterChip, { backgroundColor: filter === f ? colors.primary : colors.surfaceAlt, borderRadius: borderRadius.full }]}
             >
               <Text style={[styles.filterText, { color: filter === f ? '#FFFFFF' : colors.textSecondary }]}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {f.charAt(0).toUpperCase() + f.slice(1)}{f === 'missed' && missedCount > 0 ? ` (${missedCount})` : ''}
               </Text>
             </TouchableOpacity>
           ))}
@@ -96,22 +99,32 @@ export default function CallsScreen() {
           <View style={styles.emptyState}>
             <Icon name={icons.call} size={48} color={colors.textMuted} />
             <ThemedText variant="subtitle" align="center">No calls found</ThemedText>
-            <ThemedText variant="muted" align="center">{search ? 'Try a different search' : 'Your call history will appear here'}</ThemedText>
+            <ThemedText variant="muted" align="center">{search ? 'Try a different search' : 'Tap + to make a call'}</ThemedText>
           </View>
         ) : (
           filteredCalls.map(call => (
-            <TouchableOpacity key={call.id} style={[styles.callItem, { backgroundColor: colors.surfaceAlt }]}>
+            <TouchableOpacity key={call.id} style={[styles.callItem, { backgroundColor: colors.surfaceAlt }]} onPress={() => router.push('/(tabs)/calls')}>
               <View style={[styles.callAvatar, { backgroundColor: colors.surface }]}>
-                <Icon name={call.direction === 'inbound' ? icons.call : icons.phoneFilled} size={20} color={getStatusColor(call.status)} />
+                <Text style={[styles.avatarText, { color: colors.primary }]}>
+                  {(call.contacts?.name || call.from_number || '?')[0].toUpperCase()}
+                </Text>
               </View>
               <View style={styles.callInfo}>
                 <ThemedText variant="body" weight="600">
                   {call.contacts?.name || (call.direction === 'inbound' ? call.from_number : call.to_number)}
                 </ThemedText>
-                <ThemedText variant="caption" style={{ color: getStatusColor(call.status) }}>
-                  {call.direction === 'inbound' ? 'Incoming' : 'Outgoing'} • {call.status}
-                  {call.duration_seconds > 0 && ` • ${formatDuration(call.duration_seconds)}`}
-                </ThemedText>
+                <View style={styles.callMeta}>
+                  <Icon name={call.direction === 'inbound' ? icons.call : icons.phoneFilled} size={12} color={getStatusColor(call.status)} />
+                  <ThemedText variant="caption" style={{ color: getStatusColor(call.status) }}>
+                    {call.direction === 'inbound' ? 'Incoming' : 'Outgoing'} • {call.status}
+                    {call.duration_seconds > 0 && ` • ${formatDuration(call.duration_seconds)}`}
+                  </ThemedText>
+                </View>
+                {call.ai_summary && (
+                  <ThemedText variant="caption" numberOfLines={1} style={{ color: colors.textMuted }}>
+                    {call.ai_summary}
+                  </ThemedText>
+                )}
               </View>
               <View style={styles.callRight}>
                 <ThemedText variant="caption">
@@ -132,13 +145,16 @@ export default function CallsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 24 },
+  addBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   filterRow: { marginVertical: 12 },
   filterContent: { gap: 8 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 8 },
   filterText: { fontSize: 14, fontWeight: '600' },
   callItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 8, gap: 12 },
   callAvatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  callInfo: { flex: 1, gap: 2 },
+  avatarText: { fontSize: 18, fontWeight: '600' },
+  callInfo: { flex: 1, gap: 4 },
+  callMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   callRight: { alignItems: 'flex-end', gap: 2 },
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 8 },
 });
