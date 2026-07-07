@@ -1,3 +1,4 @@
+// Conversation Detail Screen - Real SMS via Edge Function + Realtime
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, TextInput,
@@ -5,7 +6,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../src/stores';
+import { useAuthStore, useAppStore } from '../../src/stores';
 import { supabase } from '../../src/lib/supabase';
 import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
 import type { Message, Conversation } from '../../src/types';
@@ -13,8 +14,9 @@ import type { Message, Conversation } from '../../src/types';
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { theme } = useThemeContext();
-  const { colors, spacing, fontSize, borderRadius } = theme;
-  const { user } = useAuthStore();
+  const { colors, borderRadius } = theme;
+  const { user, currentOrganization } = useAuthStore();
+  const { sendMessage } = useAppStore();
 
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -32,9 +34,7 @@ export default function ConversationScreen() {
       .eq('id', id)
       .single();
 
-    if (conv) {
-      setConversation(conv as Conversation);
-    }
+    if (conv) setConversation(conv as Conversation);
 
     const { data: msgs } = await supabase
       .from('messages')
@@ -44,44 +44,64 @@ export default function ConversationScreen() {
 
     setMessages((msgs || []) as Message[]);
     setLoading(false);
+
+    // Mark as read
+    if (conv?.unread_count > 0) {
+      await supabase
+        .from('conversations')
+        .update({ unread_count: 0 })
+        .eq('id', id);
+    }
   }, [id]);
 
   useEffect(() => {
     loadConversation();
   }, [loadConversation]);
 
+  // Subscribe to realtime messages
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel(`messages:${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${id}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as Message;
+          setMessages(prev => [...prev, newMsg]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   const handleSend = async () => {
-    if (!newMessage.trim() || !conversation || !user) return;
+    if (!newMessage.trim() || !conversation || !user || !currentOrganization) return;
 
     setSending(true);
     const messageBody = newMessage.trim();
     setNewMessage('');
 
-    const { data, error } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: id,
-        contact_id: conversation.contact_id,
-        phone_number_id: conversation.phone_number_id,
-        sender_id: user.id,
-        direction: 'outbound',
-        type: 'sms',
-        body: messageBody,
-        status: 'sent',
-      })
-      .select()
-      .single();
+    // Use Edge Function to send (never direct Twilio)
+    const { error } = await sendMessage(
+      currentOrganization.id,
+      conversation.phone_number_id,
+      conversation.contacts?.phone_number || '',
+      messageBody
+    );
 
-    if (!error && data) {
-      setMessages((prev) => [...prev, data as Message]);
-
-      await supabase
-        .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          last_message_preview: messageBody.slice(0, 100),
-        })
-        .eq('id', id);
+    if (error) {
+      // Show error to user
+      console.error('Send failed:', error);
     }
 
     setSending(false);
@@ -105,7 +125,7 @@ export default function ConversationScreen() {
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isMe = item.direction === 'outbound';
     const showDate = index === 0 ||
-      formatDate(item.created_at) !== formatDate(messages[index - 1].created_at);
+      formatDate(item.created_at) !== formatDate(messages[index - 1]?.created_at);
 
     return (
       <>
@@ -117,15 +137,7 @@ export default function ConversationScreen() {
           </View>
         )}
         <View style={[styles.messageBubble, isMe ? styles.myMessage : styles.theirMessage]}>
-          <View
-            style={[
-              styles.bubble,
-              {
-                backgroundColor: isMe ? colors.primary : colors.surfaceAlt,
-                borderRadius: borderRadius.lg,
-              },
-            ]}
-          >
+          <View style={[styles.bubble, { backgroundColor: isMe ? colors.primary : colors.surfaceAlt, borderRadius: borderRadius.lg }]}>
             <ThemedText style={[styles.messageText, { color: isMe ? '#FFFFFF' : colors.text }]}>
               {item.body}
             </ThemedText>
@@ -133,11 +145,11 @@ export default function ConversationScreen() {
               <ThemedText variant="caption" style={{ color: isMe ? '#FFFFFF80' : colors.textMuted }}>
                 {formatTime(item.created_at)}
               </ThemedText>
-              {isMe && item.status && (
+              {isMe && (
                 <Icon
-                  name={item.status === 'delivered' ? icons.checkCircle : icons.check}
+                  name={item.status === 'delivered' ? icons.checkCircle : item.status === 'failed' ? icons.alert : icons.check}
                   size={12}
-                  color={isMe ? '#FFFFFF80' : colors.textMuted}
+                  color={item.status === 'failed' ? '#F87171' : isMe ? '#FFFFFF80' : colors.textMuted}
                 />
               )}
             </View>
@@ -196,7 +208,7 @@ export default function ConversationScreen() {
             placeholder="Type a message..."
             placeholderTextColor={colors.textMuted}
             multiline
-            maxLength={1000}
+            maxLength={1600}
           />
           <TouchableOpacity
             onPress={handleSend}
@@ -227,29 +239,9 @@ const styles = StyleSheet.create({
   bubble: { paddingHorizontal: 16, paddingVertical: 10 },
   messageText: { fontSize: 16, lineHeight: 22 },
   messageFooter: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, justifyContent: 'flex-end' },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 12,
-    borderTopWidth: 1,
-    gap: 8,
-  },
+  inputContainer: { flexDirection: 'row', alignItems: 'flex-end', padding: 12, borderTopWidth: 1, gap: 8 },
   attachButton: { padding: 4 },
-  textInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 16,
-    maxHeight: 100,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  textInput: { flex: 1, borderWidth: 1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, maxHeight: 100 },
+  sendButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8 },
 });

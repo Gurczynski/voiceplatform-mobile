@@ -13,6 +13,7 @@ export default function HomeScreen() {
   const {
     phoneNumbers, conversations, calls, voicemails,
     loadPhoneNumbers, loadConversations, loadCalls, loadVoicemails,
+    subscribeToMessages, subscribeToCalls,
   } = useAppStore();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -26,6 +27,15 @@ export default function HomeScreen() {
       loadConversations(currentOrganization.id);
       loadCalls(currentOrganization.id);
       loadVoicemails(currentOrganization.id);
+
+      // Subscribe to realtime updates
+      const unsubMessages = subscribeToMessages(currentOrganization.id);
+      const unsubCalls = subscribeToCalls(currentOrganization.id);
+
+      return () => {
+        unsubMessages();
+        unsubCalls();
+      };
     }
   }, [currentOrganization]);
 
