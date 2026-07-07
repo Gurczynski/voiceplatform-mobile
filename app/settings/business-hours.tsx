@@ -1,10 +1,10 @@
 // Business Hours - Professional Quality
 import { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Switch, Alert, Text } from 'react-native';
-import { useThemeContext } from '../../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../../src/stores';
-import { supabase } from '../../../src/lib/supabase';
-import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../../src/components/ui';
+import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useAuthStore } from '../../src/stores';
+import { supabase } from '../../src/lib/supabase';
+import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };

@@ -1,10 +1,10 @@
 // Automations - Professional Quality
 import { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Switch, Alert, TextInput, Text } from 'react-native';
-import { useThemeContext } from '../../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../../src/stores';
-import { supabase } from '../../../src/lib/supabase';
-import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../../src/components/ui';
+import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useAuthStore } from '../../src/stores';
+import { supabase } from '../../src/lib/supabase';
+import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
 
 const TRIGGERS = [
   { id: 'missed_call', label: 'Missed Call', icon: icons.call, color: '#EF4444', desc: 'When a call is missed' },

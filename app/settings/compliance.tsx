@@ -1,10 +1,10 @@
 // A2P Compliance - Professional Quality
 import { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, TextInput, Alert, Text } from 'react-native';
-import { useThemeContext } from '../../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../../src/stores';
-import { supabase } from '../../../src/lib/supabase';
-import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../../src/components/ui';
+import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useAuthStore } from '../../src/stores';
+import { supabase } from '../../src/lib/supabase';
+import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
 
 export default function ComplianceScreen() {
   const { theme } = useThemeContext();

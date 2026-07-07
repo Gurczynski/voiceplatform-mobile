@@ -1,10 +1,10 @@
 // IVR Builder - Professional Quality
 import { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, TextInput, Alert, Switch, Text } from 'react-native';
-import { useThemeContext } from '../../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../../src/stores';
-import { supabase } from '../../../src/lib/supabase';
-import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../../src/components/ui';
+import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useAuthStore } from '../../src/stores';
+import { supabase } from '../../src/lib/supabase';
+import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
 
 const NODE_TYPES = [
   { type: 'incoming_call', label: 'Incoming Call', icon: icons.call, color: '#3B82F6', desc: 'Start point for calls' },

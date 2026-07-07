@@ -1,10 +1,10 @@
 // Team Management - Professional Quality
 import { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Alert, Text } from 'react-native';
-import { useThemeContext } from '../../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../../src/stores';
-import { supabase } from '../../../src/lib/supabase';
-import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../../src/components/ui';
+import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useAuthStore } from '../../src/stores';
+import { supabase } from '../../src/lib/supabase';
+import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
 
 const ROLES = [
   { key: 'owner', label: 'Owner', desc: 'Full access to everything', color: '#EF4444' },

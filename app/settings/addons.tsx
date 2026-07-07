@@ -2,11 +2,11 @@
 import { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useThemeContext } from '../../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../../src/stores';
-import { supabase, callEdgeFunction } from '../../../src/lib/supabase';
-import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../../src/components/ui';
-import { ADDONS, getAddonsByCategory, formatPrice } from '../../../src/config/addons';
+import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useAuthStore } from '../../src/stores';
+import { supabase, callEdgeFunction } from '../../src/lib/supabase';
+import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
+import { ADDONS, getAddonsByCategory, formatPrice } from '../../src/config/addons';
 
 const CATEGORIES = [
   { key: 'ai', label: 'AI Features', icon: '🤖', color: '#EC4899' },

@@ -1,9 +1,9 @@
 // Phone Numbers Management - Professional Quality
 import { useEffect, useState, useCallback } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text, Alert, Modal, TextInput } from 'react-native';
-import { useThemeContext } from '../../../src/theme/ThemeProvider';
-import { useAuthStore, useAppStore } from '../../../src/stores';
-import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../../src/components/ui';
+import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useAuthStore, useAppStore } from '../../src/stores';
+import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
 
 export default function NumbersScreen() {
   const { theme } = useThemeContext();

@@ -72,29 +72,29 @@ export default function MoreScreen() {
 
         {/* Phone System */}
         <Section title="PHONE SYSTEM">
-          <Row icon={icons.phonePortrait} label="Phone Numbers" color="#3B82F6" onPress={() => router.push('/(tabs)/settings/numbers')} />
-          <Row icon={icons.dialpad} label="IVR Flows" color="#8B5CF6" onPress={() => router.push('/(tabs)/settings/ivr')} />
-          <Row icon={icons.call} label="Ring Groups" color="#10B981" onPress={() => router.push('/(tabs)/settings/ring-groups')} />
-          <Row icon={icons.clock} label="Business Hours" color="#6366F1" onPress={() => router.push('/(tabs)/settings/business-hours')} />
+          <Row icon={icons.phonePortrait} label="Phone Numbers" color="#3B82F6" onPress={() => router.push('/settings/numbers')} />
+          <Row icon={icons.dialpad} label="IVR Flows" color="#8B5CF6" onPress={() => router.push('/settings/ivr')} />
+          <Row icon={icons.call} label="Ring Groups" color="#10B981" onPress={() => router.push('/settings/ring-groups')} />
+          <Row icon={icons.clock} label="Business Hours" color="#6366F1" onPress={() => router.push('/settings/business-hours')} />
         </Section>
 
         {/* AI & Automation */}
         <Section title="AI & AUTOMATION">
-          <Row icon={icons.mic} label="AI Receptionist" color="#EC4899" onPress={() => router.push('/(tabs)/settings/ai-agent')} />
-          <Row icon={icons.document} label="Knowledge Base" color="#8B5CF6" onPress={() => router.push('/(tabs)/settings/knowledge-base')} />
-          <Row icon={icons.stats} label="Automations" color="#6366F1" onPress={() => router.push('/(tabs)/settings/automations')} />
+          <Row icon={icons.mic} label="AI Receptionist" color="#EC4899" onPress={() => router.push('/settings/ai-agent')} />
+          <Row icon={icons.document} label="Knowledge Base" color="#8B5CF6" onPress={() => router.push('/settings/knowledge-base')} />
+          <Row icon={icons.stats} label="Automations" color="#6366F1" onPress={() => router.push('/settings/automations')} />
         </Section>
 
         {/* Billing */}
         <Section title="BILLING">
-          <Row icon={icons.star} label="Subscription & Plans" color="#F59E0B" onPress={() => router.push('/(tabs)/settings/billing')} />
-          <Row icon={icons.add} label="Add-ons" color="#3B82F6" onPress={() => router.push('/(tabs)/settings/addons')} />
+          <Row icon={icons.star} label="Subscription & Plans" color="#F59E0B" onPress={() => router.push('/settings/billing')} />
+          <Row icon={icons.add} label="Add-ons" color="#3B82F6" onPress={() => router.push('/settings/addons')} />
         </Section>
 
         {/* Team (Admin only) */}
         {isAdmin && (
           <Section title="TEAM">
-            <Row icon={icons.people} label="Team Members" color="#3B82F6" onPress={() => router.push('/(tabs)/settings/team')} />
+            <Row icon={icons.people} label="Team Members" color="#3B82F6" onPress={() => router.push('/settings/team')} />
             <Row icon={icons.shield} label="Roles & Permissions" color="#6366F1" />
           </Section>
         )}
@@ -103,8 +103,8 @@ export default function MoreScreen() {
         <Section title="SECURITY">
           <Row icon={icons.lock} label="Privacy & Security" color="#EF4444" />
           <Row icon={icons.notifications} label="Notifications" color="#F59E0B" />
-          <Row icon={icons.shield} label="A2P Compliance" color="#10B981" onPress={() => router.push('/(tabs)/settings/compliance')} />
-          <Row icon={icons.time} label="Audit Log" color="#6366F1" onPress={() => router.push('/(tabs)/settings/audit-log')} />
+          <Row icon={icons.shield} label="A2P Compliance" color="#10B981" onPress={() => router.push('/settings/compliance')} />
+          <Row icon={icons.time} label="Audit Log" color="#6366F1" onPress={() => router.push('/settings/audit-log')} />
         </Section>
 
         {/* Appearance */}

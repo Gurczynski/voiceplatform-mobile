@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';
-import { useThemeContext } from '../../../src/theme/ThemeProvider';
-import { useAuthStore } from '../../../src/stores';
-import { supabase, callEdgeFunction } from '../../../src/lib/supabase';
-import { ThemedView, ThemedText, ThemedCard, ThemedHeader, ThemedButton, Icon, icons } from '../../../src/components/ui';
-import type { Subscription, Invoice } from '../../../src/types';
+import { useThemeContext } from '../../src/theme/ThemeProvider';
+import { useAuthStore } from '../../src/stores';
+import { supabase, callEdgeFunction } from '../../src/lib/supabase';
+import { ThemedView, ThemedText, ThemedCard, ThemedHeader, ThemedButton, Icon, icons } from '../../src/components/ui';
+import type { Subscription, Invoice } from '../../src/types';
 
 const TIERS = [
   { key: 'starter', name: 'Starter', price: '$29', features: ['1 user', '1 number', 'Basic IVR', 'Voicemail'] },
