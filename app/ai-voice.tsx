@@ -39,7 +39,7 @@ export default function AIVoiceScreen() {
     setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: text, time: new Date() }]);
     setLoading(true);
 
-    const { data, error } = await callEdgeFunction('ai-voice-conversation', {
+    const { data, error } = await callEdgeFunction('ai-chat', {
       organizationId: currentOrganization.id,
       message: text,
       history: messages.map(m => ({ role: m.role, content: m.content })),
