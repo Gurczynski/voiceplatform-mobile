@@ -4,7 +4,8 @@ import { View, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, Text } 
 import { useRouter } from 'expo-router';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
 import { useAuthStore, useAppStore } from '../../src/stores';
-import { ThemedView, ThemedText, ThemedHeader, Icon, icons } from '../../src/components/ui';
+import { supabase } from '../../src/lib/supabase';
+import { ThemedView, ThemedText, ThemedHeader, Icon, icons, TrialBanner } from '../../src/components/ui';
 
 export default function HomeScreen() {
   const { theme } = useThemeContext();
@@ -17,6 +18,7 @@ export default function HomeScreen() {
     subscribeToRealtime,
   } = useAppStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [subscription, setSubscription] = useState<any>(null);
 
   useEffect(() => { loadSession(); }, []);
 
@@ -26,10 +28,16 @@ export default function HomeScreen() {
       loadConversations(currentOrganization.id);
       loadCalls(currentOrganization.id);
       loadVoicemails(currentOrganization.id);
+      loadSubscription(currentOrganization.id);
       const unsub = subscribeToRealtime(currentOrganization.id);
       return unsub;
     }
   }, [currentOrganization?.id]);
+
+  const loadSubscription = async (orgId: string) => {
+    const { data } = await supabase.from('subscriptions').select('*').eq('organization_id', orgId).single();
+    setSubscription(data);
+  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -82,6 +90,11 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {/* Trial Banner */}
+        {subscription?.status === 'trialing' && subscription?.current_period_end && (
+          <TrialBanner daysLeft={Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} />
+        )}
 
         {/* Stats */}
         <View style={styles.statsRow}>
