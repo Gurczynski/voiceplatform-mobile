@@ -70,6 +70,7 @@ export default function MoreScreen() {
 
         <Section title="PHONE SYSTEM">
           <Row icon={icons.phonePortrait} label="Phone Numbers" color="#3B82F6" onPress={() => router.push('/settings/numbers')} />
+          <Row icon={icons.key} label="Twilio Configuration" color="#F59E0B" onPress={() => router.push('/settings/twilio')} />
           <Row icon={icons.dialpad} label="IVR Flows" color="#8B5CF6" onPress={() => router.push('/settings/ivr')} />
           <Row icon={icons.call} label="Ring Groups" color="#10B981" onPress={() => router.push('/settings/ring-groups')} />
           <Row icon={icons.clock} label="Business Hours" color="#6366F1" onPress={() => router.push('/settings/business-hours')} />
