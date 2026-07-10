@@ -79,6 +79,7 @@ export default function MoreScreen() {
           <Row icon={icons.call} label="Ring Groups" color="#10B981" onPress={() => router.push('/settings/ring-groups')} />
           <Row icon={icons.clock} label="Business Hours" color="#6366F1" onPress={() => router.push('/settings/business-hours')} />
           <Row icon={icons.call} label="Smart Routing" color="#EC4899" onPress={() => router.push('/settings/smart-routing')} />
+          <Row icon={icons.call} label="Callback Queue" color="#F59E0B" onPress={() => router.push('/settings/callbacks')} />
         </Section>
 
         {/* AI & Automation */}
@@ -111,6 +112,8 @@ export default function MoreScreen() {
           <Row icon={icons.document} label="QA Scorecards" color="#8B5CF6" onPress={() => router.push('/settings/qa')} />
           <Row icon={icons.mic} label="Call Simulator" color="#EC4899" onPress={() => router.push('/settings/simulator')} />
           <Row icon={icons.personAdd} label="Import Contacts" color="#F59E0B" onPress={() => router.push('/settings/import-contacts')} />
+          <Row icon={icons.stats} label="Performance" color="#06B6D4" onPress={() => router.push('/settings/performance')} />
+          <Row icon={icons.download} label="Export Data" color="#6366F1" onPress={() => router.push('/settings/export')} />
         </Section>
 
         {/* Billing */}
