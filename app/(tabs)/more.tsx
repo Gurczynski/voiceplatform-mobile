@@ -1,4 +1,4 @@
-// More Screen - Hub for all features
+// More Screen - Complete hub for all features
 import { View, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useThemeContext } from '../../src/theme/ThemeProvider';
@@ -48,6 +48,7 @@ export default function MoreScreen() {
       <ThemedHeader title="More" />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Profile Card */}
         <TouchableOpacity style={[styles.profileCard, { backgroundColor: colors.surfaceAlt }]}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
             <Text style={styles.avatarText}>{(profile?.full_name || user?.email || 'U')[0].toUpperCase()}</Text>
@@ -62,46 +63,70 @@ export default function MoreScreen() {
           <Icon name={icons.forward} size={18} color={colors.textMuted} />
         </TouchableOpacity>
 
+        {/* Quick Access */}
         <Section title="QUICK ACCESS">
           <Row icon={icons.mic} label="Voicemail" color="#8B5CF6" onPress={() => router.push('/(tabs)/voicemail')} />
           <Row icon={icons.people} label="Contacts" color="#10B981" onPress={() => router.push('/(tabs)/contacts')} />
           <Row icon={icons.recording} label="Recordings" color="#F59E0B" onPress={() => router.push('/(tabs)/recordings')} />
+          <Row icon={icons.chat} label="Unified Inbox" color="#3B82F6" onPress={() => router.push('/settings/unified-inbox')} />
         </Section>
 
+        {/* Phone System */}
         <Section title="PHONE SYSTEM">
           <Row icon={icons.phonePortrait} label="Phone Numbers" color="#3B82F6" onPress={() => router.push('/settings/numbers')} />
           <Row icon={icons.key} label="Twilio Configuration" color="#F59E0B" onPress={() => router.push('/settings/twilio')} />
           <Row icon={icons.dialpad} label="IVR Flows" color="#8B5CF6" onPress={() => router.push('/settings/ivr')} />
           <Row icon={icons.call} label="Ring Groups" color="#10B981" onPress={() => router.push('/settings/ring-groups')} />
           <Row icon={icons.clock} label="Business Hours" color="#6366F1" onPress={() => router.push('/settings/business-hours')} />
+          <Row icon={icons.call} label="Smart Routing" color="#EC4899" onPress={() => router.push('/settings/smart-routing')} />
         </Section>
 
+        {/* AI & Automation */}
         <Section title="AI & AUTOMATION">
           <Row icon={icons.mic} label="AI Receptionist" color="#EC4899" onPress={() => router.push('/settings/ai-agent')} />
           <Row icon={icons.document} label="Knowledge Base" color="#8B5CF6" onPress={() => router.push('/settings/knowledge-base')} />
           <Row icon={icons.stats} label="Automations" color="#6366F1" onPress={() => router.push('/settings/automations')} />
           <Row icon={icons.clock} label="Scheduler" color="#F59E0B" onPress={() => router.push('/settings/scheduler')} />
+          <Row icon={icons.chat} label="AI Auto-Reply" color="#10B981" onPress={() => router.push('/settings/auto-reply')} />
         </Section>
 
-        <Section title="REVENUE">
+        {/* Messaging */}
+        <Section title="MESSAGING">
           <Row icon={icons.chat} label="SMS Campaigns" color="#3B82F6" onPress={() => router.push('/settings/campaigns')} />
+          <Row icon={icons.chat} label="Quick Reply Templates" color="#10B981" onPress={() => router.push('/settings/quick-replies')} />
+          <Row icon={icons.globe} label="Webhooks" color="#8B5CF6" onPress={() => router.push('/settings/webhooks')} />
+        </Section>
+
+        {/* Revenue */}
+        <Section title="REVENUE">
           <Row icon={icons.calendar} label="Appointments" color="#10B981" onPress={() => router.push('/settings/appointments')} />
           <Row icon={icons.star} label="Review Requests" color="#F59E0B" onPress={() => router.push('/settings/reviews')} />
           <Row icon={icons.call} label="Payment Collection" color="#EF4444" onPress={() => router.push('/settings/payments')} />
         </Section>
 
+        {/* Team & Training */}
         <Section title="TEAM & TRAINING">
           <Row icon={icons.people} label="Team Members" color="#3B82F6" onPress={() => router.push('/settings/team')} />
           <Row icon={icons.chat} label="Team Chat" color="#10B981" onPress={() => router.push('/settings/team-chat')} />
           <Row icon={icons.document} label="QA Scorecards" color="#8B5CF6" onPress={() => router.push('/settings/qa')} />
           <Row icon={icons.mic} label="Call Simulator" color="#EC4899" onPress={() => router.push('/settings/simulator')} />
+          <Row icon={icons.personAdd} label="Import Contacts" color="#F59E0B" onPress={() => router.push('/settings/import-contacts')} />
         </Section>
 
+        {/* Billing */}
         <Section title="BILLING">
           <Row icon={icons.star} label="Subscription & Plans" color="#F59E0B" onPress={() => router.push('/settings/billing')} />
           <Row icon={icons.add} label="Add-ons" color="#3B82F6" onPress={() => router.push('/settings/addons')} />
         </Section>
 
+        {/* Developer */}
+        <Section title="DEVELOPER">
+          <Row icon={icons.globe} label="API Access" color="#6366F1" onPress={() => router.push('/settings/api')} />
+          <Row icon={icons.globe} label="Webhooks" color="#8B5CF6" onPress={() => router.push('/settings/webhooks')} />
+          <Row icon={icons.document} label="Industry Templates" color="#F59E0B" onPress={() => router.push('/settings/industries')} />
+        </Section>
+
+        {/* Security */}
         <Section title="SECURITY">
           <Row icon={icons.lock} label="Privacy & Security" color="#EF4444" />
           <Row icon={icons.notifications} label="Notifications" color="#F59E0B" />
@@ -109,6 +134,7 @@ export default function MoreScreen() {
           <Row icon={icons.time} label="Audit Log" color="#6366F1" onPress={() => router.push('/settings/audit-log')} />
         </Section>
 
+        {/* Appearance */}
         <Section title="APPEARANCE">
           {(['light', 'dark', 'system'] as const).map(mode => (
             <TouchableOpacity key={mode} style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => setThemeMode(mode)}>
@@ -121,12 +147,13 @@ export default function MoreScreen() {
           ))}
         </Section>
 
+        {/* Sign Out */}
         <TouchableOpacity style={[styles.signOutBtn, { backgroundColor: colors.error + '15' }]} onPress={handleSignOut}>
           <Icon name={icons.logOut} size={20} color={colors.error} />
           <Text style={[styles.signOutText, { color: colors.error }]}>Sign Out</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.version, { color: colors.textMuted }]}>VoicePlatform v1.0.0</Text>
+        <Text style={[styles.version, { color: colors.textMuted }]}>OhTry Mobile v1.0.0</Text>
       </ScrollView>
     </ThemedView>
   );
