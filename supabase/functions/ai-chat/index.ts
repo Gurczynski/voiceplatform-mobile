@@ -1,12 +1,13 @@
-// AI Chat - For mobile app text-based AI conversations using Ollama Cloud
+// AI Chat - With Ollama Cloud + Local Fallback
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import {
   corsHeaders, getAuthenticatedUser, verifyOrgMembership,
   createSupabaseClient, errorResponse, successResponse, handleOptions
 } from '../_shared/utils.ts';
 
-const OLLAMA_API_KEY = Deno.env.get('OLLAMA_API_KEY');
-const OLLAMA_API_URL = Deno.env.get('OLLAMA_API_URL') || 'https://api.ollama.com';
+const OLLAMA_CLOUD_KEY = Deno.env.get('OLLAMA_API_KEY');
+const OLLAMA_CLOUD_URL = Deno.env.get('OLLAMA_API_URL') || 'https://api.ollama.com';
+const OLLAMA_LOCAL_URL = 'http://host.docker.internal:11434';
 
 serve(async (req) => {
   const optionsResp = await handleOptions(req);
@@ -45,12 +46,7 @@ serve(async (req) => {
     const businessName = aiAgent?.business_name || 'the business';
     const tone = aiAgent?.tone || 'professional';
 
-    // Build messages for AI
-    const messages = [
-      {
-        role: 'system',
-        content: `You are ${agentName}, an AI assistant for ${businessName}.
-
+    const systemPrompt = `You are ${agentName}, an AI assistant for ${businessName}.
 Personality: ${tone}
 ${aiAgent?.personality || ''}
 
@@ -66,52 +62,74 @@ ${aiAgent?.fallback_message ? `If you cannot help, say: "${aiAgent.fallback_mess
 Knowledge Base:
 ${knowledgeContext || 'No specific knowledge base configured.'}
 
-IMPORTANT: Keep responses natural and conversational. No markdown formatting.`,
-      },
+IMPORTANT: Keep responses natural and conversational. No markdown formatting.`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
       ...(history || []).map((h: any) => ({ role: h.role, content: h.content })),
       { role: 'user', content: message },
     ];
 
-    if (!OLLAMA_API_KEY) {
-      // Fallback response when no API key
-      const response = generateFallbackResponse(message, aiAgent);
-      return successResponse({ response });
+    // Try Ollama Cloud first, then local fallback
+    let response = '';
+    let model = 'fallback';
+
+    if (OLLAMA_CLOUD_KEY) {
+      try {
+        const cloudResp = await fetch(`${OLLAMA_CLOUD_URL}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${OLLAMA_CLOUD_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ model: 'minimax-m3', messages, stream: false }),
+        });
+
+        if (cloudResp.ok) {
+          const data = await cloudResp.json();
+          response = data.message?.content || '';
+          model = 'minimax-m3';
+        }
+      } catch (e) {
+        console.log('Ollama Cloud failed, trying local...');
+      }
     }
 
-    // Call Ollama Cloud API
-    const ollamaResp = await fetch(`${OLLAMA_API_URL}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OLLAMA_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'minimax-m3',
-        messages,
-        stream: false,
-      }),
-    });
+    // Fallback to local Ollama
+    if (!response) {
+      try {
+        const localResp = await fetch(`${OLLAMA_LOCAL_URL}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'llama3.2:3b', messages, stream: false }),
+        });
 
-    if (!ollamaResp.ok) {
-      const err = await ollamaResp.text();
-      console.error('Ollama error:', err);
-      const response = generateFallbackResponse(message, aiAgent);
-      return successResponse({ response });
+        if (localResp.ok) {
+          const data = await localResp.json();
+          response = data.message?.content || '';
+          model = 'llama3.2:3b (local)';
+        }
+      } catch (e) {
+        console.log('Local Ollama failed, using fallback');
+      }
     }
 
-    const ollamaData = await ollamaResp.json();
-    const response = ollamaData.message?.content || generateFallbackResponse(message, aiAgent);
+    // Final fallback
+    if (!response) {
+      response = generateFallbackResponse(message, aiAgent);
+      model = 'fallback';
+    }
 
-    // Track token usage
+    // Track usage
     await supabase.from('ai_usage_events').insert({
       organization_id: organizationId,
       user_id: user.id,
       event_type: 'token',
-      quantity: ollamaData.eval_count || 0,
-      metadata: { type: 'ai_chat', model: 'minimax-m3' },
+      quantity: response.split(' ').length * 2, // Rough estimate
+      metadata: { type: 'ai_chat', model },
     });
 
-    return successResponse({ response });
+    return successResponse({ response, model });
   } catch (error) {
     return errorResponse(error.message, 500);
   }
@@ -132,9 +150,6 @@ function generateFallbackResponse(message: string, aiAgent: any): string {
   }
   if (input.includes('support') || input.includes('help') || input.includes('issue')) {
     return `I understand you need support. Can you tell me more about the issue so I can direct you to the right team?`;
-  }
-  if (input.includes('location') || input.includes('address') || input.includes('where')) {
-    return `I can help with that. Let me get our location details for you.`;
   }
   if (input.includes('hello') || input.includes('hi') || input.includes('hey')) {
     return `Hello! Welcome to ${businessName}. How can I assist you today?`;
