@@ -62,7 +62,7 @@ serve(async (req) => {
     // Get Twilio credentials (handles both managed and BYOT modes)
     const { accountSid, authToken, mainAccountSid } = await getTwilioCredentials(supabase, organizationId);
 
-    // Send via Twilio
+    // Send via Twilio using main account credentials
     const params = new URLSearchParams({
       From: phoneNumber.phone_number,
       To: to,
@@ -74,7 +74,7 @@ serve(async (req) => {
     }
 
     const twilioResp = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      `https://api.twilio.com/2010-04-01/Accounts/${mainAccountSid}/Messages.json`,
       {
         method: 'POST',
         headers: {

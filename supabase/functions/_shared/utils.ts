@@ -120,7 +120,9 @@ export async function getTwilioCredentials(supabase: any, organizationId: string
   if (org.mode === 'managed' && org.twilio_subaccount_sid) {
     // Managed mode: use main account credentials to call subaccount API
     accountSid = org.twilio_subaccount_sid; // Used in API URL
-    mainAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID') || ''; // Used for auth
+    
+    // Get main account SID from env or database
+    mainAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID') || '';
     authToken = Deno.env.get('TWILIO_AUTH_TOKEN') || '';
     
     // Fallback: try to get from database
@@ -132,8 +134,12 @@ export async function getTwilioCredentials(supabase: any, organizationId: string
       }
     }
     
+    // If still no main account SID, use the subaccount SID
+    if (!mainAccountSid) {
+      mainAccountSid = accountSid;
+    }
+    
     if (!authToken) throw new Error('TWILIO_AUTH_TOKEN not configured');
-    if (!mainAccountSid) throw new Error('TWILIO_ACCOUNT_SID not configured');
   } else {
     // BYOT mode: use customer's own Twilio credentials
     const { data: twilioAccount } = await supabase
