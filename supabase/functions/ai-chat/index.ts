@@ -1,11 +1,12 @@
-// AI Chat - For mobile app text-based AI conversations
+// AI Chat - For mobile app text-based AI conversations using Ollama Cloud
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import {
   corsHeaders, getAuthenticatedUser, verifyOrgMembership,
   createSupabaseClient, errorResponse, successResponse, handleOptions
 } from '../_shared/utils.ts';
 
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const OLLAMA_API_KEY = Deno.env.get('OLLAMA_API_KEY');
+const OLLAMA_API_URL = Deno.env.get('OLLAMA_API_URL') || 'https://api.ollama.com';
 
 serve(async (req) => {
   const optionsResp = await handleOptions(req);
@@ -44,7 +45,7 @@ serve(async (req) => {
     const businessName = aiAgent?.business_name || 'the business';
     const tone = aiAgent?.tone || 'professional';
 
-    // Build messages for OpenAI
+    // Build messages for AI
     const messages = [
       {
         role: 'system',
@@ -71,44 +72,43 @@ IMPORTANT: Keep responses natural and conversational. No markdown formatting.`,
       { role: 'user', content: message },
     ];
 
-    if (!OPENAI_API_KEY) {
+    if (!OLLAMA_API_KEY) {
       // Fallback response when no API key
       const response = generateFallbackResponse(message, aiAgent);
       return successResponse({ response });
     }
 
-    // Call OpenAI
-    const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call Ollama Cloud API
+    const ollamaResp = await fetch(`${OLLAMA_API_URL}/api/chat`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${OLLAMA_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'minimax-m3',
         messages,
-        max_tokens: 300,
-        temperature: 0.7,
+        stream: false,
       }),
     });
 
-    if (!openaiResp.ok) {
-      const err = await openaiResp.text();
-      console.error('OpenAI error:', err);
+    if (!ollamaResp.ok) {
+      const err = await ollamaResp.text();
+      console.error('Ollama error:', err);
       const response = generateFallbackResponse(message, aiAgent);
       return successResponse({ response });
     }
 
-    const openaiData = await openaiResp.json();
-    const response = openaiData.choices?.[0]?.message?.content || generateFallbackResponse(message, aiAgent);
+    const ollamaData = await ollamaResp.json();
+    const response = ollamaData.message?.content || generateFallbackResponse(message, aiAgent);
 
     // Track token usage
     await supabase.from('ai_usage_events').insert({
       organization_id: organizationId,
       user_id: user.id,
       event_type: 'token',
-      quantity: openaiData.usage?.total_tokens || 0,
-      metadata: { type: 'ai_chat', model: 'gpt-4o-mini' },
+      quantity: ollamaData.eval_count || 0,
+      metadata: { type: 'ai_chat', model: 'minimax-m3' },
     });
 
     return successResponse({ response });
