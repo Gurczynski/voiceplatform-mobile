@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "VoicePlatform",
-    "slug": "voiceplatform",
+    "name": "OhTry Mobile",
+    "slug": "ohtry-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
-    "scheme": "voiceplatform",
+    "userInterfaceStyle": "automatic",
+    "scheme": "ohtry",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
+      "backgroundColor": "#3B82F6"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.voiceplatform.app",
+      "bundleIdentifier": "com.ohtry.mobile",
       "infoPlist": {
         "UIBackgroundModes": ["voip", "fetch", "remote-notification"],
         "NSMicrophoneUsageDescription": "Microphone access is required for making and receiving calls.",
@@ -25,9 +25,9 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0f172a"
+        "backgroundColor": "#3B82F6"
       },
-      "package": "com.voiceplatform.app"
+      "package": "com.ohtry.mobile"
     },
     "plugins": [
       "expo-router",

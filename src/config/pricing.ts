@@ -1,15 +1,14 @@
-// Stripe Pricing Configuration
-// Replace these with your actual Stripe Price IDs after creating products in Stripe Dashboard
+// Stripe Pricing Configuration for OhTry Mobile
+// Live Stripe Keys
 
 export const STRIPE_CONFIG = {
-  // Test mode keys (replace with live keys for production)
-  publishableKey: 'pk_test_...',
+  publishableKey: 'pk_live_51NXcOBIVcy0ivhSuX6OeSrMQutt4HL7zBxEoQTp22HA3FSWCa1fZP1AwKtBeNR2RFBs7Gb0AA4CjGCPMKIxdeFdo004eeJel6T',
   
-  // Price IDs from Stripe Dashboard
+  // Price IDs - Create these in Stripe Dashboard
   prices: {
     starter: {
       monthly: 'price_starter_monthly',      // $29/mo
-      annual: 'price_starter_annual',        // $290/year (2 months free)
+      annual: 'price_starter_annual',        // $290/year
     },
     professional: {
       monthly: 'price_professional_monthly',  // $79/mo
@@ -27,19 +26,19 @@ export const STRIPE_CONFIG = {
 
   // Add-on prices
   addons: {
-    extraLocalNumber: 'price_addon_local_number',      // $5/mo
-    extraTollFree: 'price_addon_toll_free',            // $10/mo
-    extraUser: 'price_addon_user',                      // $15/mo
-    aiVoice100: 'price_addon_ai_voice_100',            // $20/mo
-    aiVoice500: 'price_addon_ai_voice_500',            // $80/mo
-    aiMessages500: 'price_addon_ai_msg_500',            // $10/mo
-    aiMessages2000: 'price_addon_ai_msg_2000',          // $30/mo
-    storage10gb: 'price_addon_storage_10',              // $5/mo
-    storage50gb: 'price_addon_storage_50',              // $20/mo
-    advancedAnalytics: 'price_addon_analytics',         // $25/mo
-    customBranding: 'price_addon_branding',             // $50/mo
-    apiAccess: 'price_addon_api',                       // $25/mo
-    prioritySupport: 'price_addon_support',             // $50/mo
+    extraLocalNumber: 'price_addon_local_number',
+    extraTollFree: 'price_addon_toll_free',
+    extraUser: 'price_addon_user',
+    aiVoice100: 'price_addon_ai_voice_100',
+    aiVoice500: 'price_addon_ai_voice_500',
+    aiMessages500: 'price_addon_ai_msg_500',
+    aiMessages2000: 'price_addon_ai_msg_2000',
+    storage10gb: 'price_addon_storage_10',
+    storage50gb: 'price_addon_storage_50',
+    advancedAnalytics: 'price_addon_analytics',
+    customBranding: 'price_addon_branding',
+    apiAccess: 'price_addon_api',
+    prioritySupport: 'price_addon_support',
   },
 };
 
@@ -143,16 +142,12 @@ export const PLANS = {
 
 export const TRIAL_CONFIG = {
   durationDays: 14,
-  tier: 'professional', // Trial gives Professional features
-  requirePaymentMethod: false, // Don't require CC for trial
+  tier: 'professional',
+  requirePaymentMethod: false,
 };
 
 export function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(0)}`;
-}
-
-export function getAnnualSavings(monthly: number, annual: number): number {
-  return (monthly * 12) - annual;
 }
 
 export function getAnnualSavingsPercent(monthly: number, annual: number): number {
