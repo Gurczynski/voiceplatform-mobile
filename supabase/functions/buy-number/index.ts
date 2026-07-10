@@ -3,7 +3,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import {
   corsHeaders, getAuthenticatedUser, verifyOrgMembership,
   createSupabaseClient, createServiceClient, logAuditEvent,
-  errorResponse, successResponse, handleOptions
+  errorResponse, successResponse, handleOptions,
+  getTwilioCredentials
 } from '../_shared/utils.ts';
 
 serve(async (req) => {
@@ -20,7 +21,6 @@ serve(async (req) => {
     const supabase = createSupabaseClient(authHeader);
     const membership = await verifyOrgMembership(supabase, user.id, organizationId);
 
-    // Only admins/owners can buy numbers
     if (!['owner', 'admin'].includes(membership.role)) {
       return errorResponse('Insufficient permissions', 403);
     }
@@ -49,31 +49,7 @@ serve(async (req) => {
       return errorResponse(`Your ${subscription.tier} plan allows ${limit} phone numbers. Upgrade to add more.`);
     }
 
-    // Get Twilio credentials
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('twilio_subaccount_sid, twilio_subaccount_auth_token_encrypted, mode')
-      .eq('id', organizationId)
-      .single();
-
-    let accountSid: string;
-    let authToken: string;
-
-    if (org.mode === 'managed' && org.twilio_subaccount_sid) {
-      accountSid = org.twilio_subaccount_sid;
-      authToken = atob(org.twilio_subaccount_auth_token_encrypted);
-    } else {
-      const { data: twilioAccount } = await supabase
-        .from('twilio_accounts')
-        .select('account_sid, auth_token_encrypted')
-        .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .single();
-
-      if (!twilioAccount) return errorResponse('No Twilio account configured');
-      accountSid = twilioAccount.account_sid;
-      authToken = atob(twilioAccount.auth_token_encrypted);
-    }
+    const { accountSid, authToken } = await getTwilioCredentials(supabase, organizationId);
 
     const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('/rest/v1', '') || '';
 

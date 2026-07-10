@@ -2,7 +2,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import {
   corsHeaders, getAuthenticatedUser, verifyOrgMembership,
-  createSupabaseClient, errorResponse, successResponse, handleOptions
+  createSupabaseClient, errorResponse, successResponse, handleOptions,
+  getTwilioCredentials
 } from '../_shared/utils.ts';
 
 serve(async (req) => {
@@ -17,33 +18,7 @@ serve(async (req) => {
     const supabase = createSupabaseClient(authHeader);
     await verifyOrgMembership(supabase, user.id, organizationId);
 
-    // Get Twilio credentials
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('twilio_subaccount_sid, twilio_subaccount_auth_token_encrypted, mode')
-      .eq('id', organizationId)
-      .single();
-
-    if (!org) return errorResponse('Organization not found');
-
-    let accountSid: string;
-    let authToken: string;
-
-    if (org.mode === 'managed' && org.twilio_subaccount_sid) {
-      accountSid = org.twilio_subaccount_sid;
-      authToken = atob(org.twilio_subaccount_auth_token_encrypted);
-    } else {
-      const { data: twilioAccount } = await supabase
-        .from('twilio_accounts')
-        .select('account_sid, auth_token_encrypted')
-        .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .single();
-
-      if (!twilioAccount) return errorResponse('No Twilio account configured');
-      accountSid = twilioAccount.account_sid;
-      authToken = atob(twilioAccount.auth_token_encrypted);
-    }
+    const { accountSid, authToken } = await getTwilioCredentials(supabase, organizationId);
 
     // Search Twilio for available numbers
     const params = new URLSearchParams({

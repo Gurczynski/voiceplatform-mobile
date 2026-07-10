@@ -100,3 +100,54 @@ export async function handleOptions(req: Request) {
   }
   return null;
 }
+
+// Get Twilio credentials for an organization
+// Managed mode: uses main account credentials from env vars or database
+// BYOT mode: uses customer's stored credentials
+export async function getTwilioCredentials(supabase: any, organizationId: string) {
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('twilio_subaccount_sid, twilio_subaccount_auth_token_encrypted, mode')
+    .eq('id', organizationId)
+    .single();
+
+  if (!org) throw new Error('Organization not found');
+
+  let accountSid: string;
+  let authToken: string;
+  let mainAccountSid: string;
+
+  if (org.mode === 'managed' && org.twilio_subaccount_sid) {
+    // Managed mode: use main account credentials to call subaccount API
+    accountSid = org.twilio_subaccount_sid; // Used in API URL
+    mainAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID') || ''; // Used for auth
+    authToken = Deno.env.get('TWILIO_AUTH_TOKEN') || '';
+    
+    // Fallback: try to get from database
+    if (!authToken && org.twilio_subaccount_auth_token_encrypted) {
+      try {
+        authToken = atob(org.twilio_subaccount_auth_token_encrypted);
+      } catch (e) {
+        // Ignore decode errors
+      }
+    }
+    
+    if (!authToken) throw new Error('TWILIO_AUTH_TOKEN not configured');
+    if (!mainAccountSid) throw new Error('TWILIO_ACCOUNT_SID not configured');
+  } else {
+    // BYOT mode: use customer's own Twilio credentials
+    const { data: twilioAccount } = await supabase
+      .from('twilio_accounts')
+      .select('account_sid, auth_token_encrypted')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .single();
+
+    if (!twilioAccount) throw new Error('No Twilio account configured');
+    accountSid = twilioAccount.account_sid;
+    mainAccountSid = accountSid; // Same account for BYOT
+    authToken = atob(twilioAccount.auth_token_encrypted);
+  }
+
+  return { accountSid, authToken, mainAccountSid };
+}
