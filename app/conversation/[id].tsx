@@ -50,7 +50,9 @@ export default function ConversationScreen() {
     const body = newMessage.trim();
     setNewMessage('');
     const { error } = await sendMessage(currentOrganization.id, conversation.phone_number_id, conversation.contacts?.phone_number || '', body);
-    if (error) console.error('Send failed:', error);
+    if (error) {
+      Alert.alert('Message Failed', 'SMS delivery failed. This may be due to carrier restrictions or A2P compliance requirements.');
+    }
     setSending(false);
   };
 
